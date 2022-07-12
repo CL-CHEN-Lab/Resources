@@ -1,4 +1,4 @@
-#Normalise data with simulation
+#Normalize data with simulation
 library(tidyverse)
 library(zoo)
 library(foreach)
@@ -26,7 +26,6 @@ facs%>%
     ungroup()%>%
     mutate(X2=rollmean(X2,2,fill = NA))%>%
     ggplot()+geom_line(aes(X1,X2))+
-
     geom_errorbarh(data = gates_to_plot,aes(xmin=start,xmax =end-0.15,y=270,color=phase , height = 30))+
     geom_text(data = gates_to_plot,aes(x=m,y=270,color=phase, label=phase ),vjust=-0.55)+
     scale_x_continuous(sec.axis = sec_axis(~100*(.-gates$G1_peak)/(gates$G2_peak-gates$G1_peak), breaks =c(0,25,50,75,100),labels = paste0(c(0,25,50,75,100),'%') ,name = '% of replicated DNA'))+xlab('fluorescent units')+ylab('cells counts')+theme_classic()+
@@ -156,7 +155,6 @@ all_phase = read_tsv('All_normalised_Tracks_50adj.tsv') %>%
 
         )
     )%>%
-    filter(!Condition %in% c('Aph2','Aph3','NT1')) %>%
     inner_join(results)%>%
     group_by(Condition,phase)%>%
     mutate(
@@ -173,29 +171,32 @@ x=all_phase%>%filter(reads>0)%>%dplyr::select(chr,start,end,reads,Condition,phas
     cor()
 r_names=rownames(x)
 rownames(x)=case_when(r_names=='Aph1' ~ 'Aph rep 1',
-                      r_names=='Aph4' ~ 'Aph rep 2',
+                      r_names=='Aph2' ~ 'Aph rep 2',
+                      r_names=='AphRO1' ~ 'ARO rep 1',
+                      r_names=='AphRO2' ~ 'ARO rep 2',
+                      r_names=='HU1' ~ 'HU',
+                      r_names=='NT1' ~ 'NT rep 1',
+                      r_names=='NT2' ~ 'NT rep 2',
+                      r_names=='NT3' ~ 'NT rep 3',
+                      r_names=='ATRiHU1' ~ 'Aph + HU'
+                      )
+c_names=colnames(x)
+colnames(x)=case_when(r_names=='Aph1' ~ 'Aph rep 1',
+                      r_names=='Aph2' ~ 'Aph rep 2',
                       r_names=='AphRO1' ~ 'Aph + RO rep 1',
                       r_names=='AphRO2' ~ 'Aph + RO rep 2',
                       r_names=='HU1' ~ 'HU',
-                      r_names=='NT2' ~ 'NT rep 1',
-                      r_names=='NT3' ~ 'NT rep 2',
-                      r_names=='NT4' ~ 'NT rep 3')
-c_names=colnames(x)
-colnames(x)=case_when(c_names=='Aph1' ~ 'Aph rep 1',
-                      c_names=='Aph4' ~ 'Aph rep 2',
-                      c_names=='AphRO1' ~ 'Aph + RO rep 1',
-                      c_names=='AphRO2' ~ 'Aph + RO rep 2',
-                      c_names=='HU1' ~ 'HU',
-                      c_names=='NT2' ~ 'NT rep 1',
-                      c_names=='NT3' ~ 'NT rep 2',
-                      c_names=='NT4' ~ 'NT rep 3')
+                      r_names=='NT1' ~ 'NT rep 1',
+                      r_names=='NT2' ~ 'NT rep 2',
+                      r_names=='NT3' ~ 'NT rep 3',
+                      r_names=='ATRiHU1' ~ 'Aph + HU'
+)
 
 corrplot::corrplot(x,method = 'color',addCoef.col = "red",is.corr = F)
 
 #calculate URI
 URI = all_phase %>%
     filter(reads > 0)%>%
-    filter(!Condition %in% c('Aph2','Aph3')) %>%
     group_by(chr, start, end, Condition) %>%
     summarise(reads = sum(reads, na.rm = T)) %>%
     ungroup() %>%
@@ -209,14 +210,17 @@ URI = all_phase %>%
         delta_Aph_NT = Aph - NT,
         delta_AphRO_NT = AphRO - NT,
         delta_HU_NT = HU - NT,
+        delta_ATRiHU_NT = ATRiHU - NT,
         URI_Aph = (delta_Aph_NT - mean(delta_Aph_NT, na.rm = T)) / sd(delta_Aph_NT, na.rm = T),
         URI_AphRO = (delta_AphRO_NT - mean(delta_AphRO_NT, na.rm = T)) /
             sd(delta_AphRO_NT, na.rm = T),
-        URI_HU = (delta_HU_NT - mean(delta_HU_NT, na.rm = T)) / sd(delta_HU_NT, na.rm = T)
+        URI_HU = (delta_HU_NT - mean(delta_HU_NT, na.rm = T)) / sd(delta_HU_NT, na.rm = T),
+        URI_ATRiHU = (delta_ATRiHU_NT - mean(delta_ATRiHU_NT, na.rm = T)) / sd(delta_ATRiHU_NT, na.rm = T)
     ) %>%
-    dplyr::select(chr, start, end, URI_Aph, URI_AphRO, URI_HU) %>%
-    gather(Condition, URI, URI_Aph, URI_AphRO, URI_HU) %>%
+    dplyr::select(chr, start, end, URI_Aph, URI_AphRO, URI_HU,URI_ATRiHU) %>%
+    gather(Condition, URI, URI_Aph, URI_AphRO, URI_HU,URI_ATRiHU) %>%
     mutate(Condition = str_remove(Condition, 'URI_'))
+
 URI%>%write_tsv('URi_simulation_periodic_1kbXY.tsv')
 
 #calculate S50
@@ -245,266 +249,3 @@ S50=foreach(COND=unique(S50$Condition),.combine = 'rbind')%do%{
 }
 
 S50%>%write_tsv('S50_simulation_periodic_1kbXY.tsv')
-
-#higher resolution data
-to_norm = all_phase %>% group_by(Condition, phase, rep,Normalize_factor) %>% summarise(th =
-                                                                                           min(th))
-#load 50kb smoothed tracks and average them
-s0 = read_delim(
-    '/Volumes/Storage2/RT_DATA/Old_DATA/Repliseq_profiles_50kb_smooth_15Mreads/Run_150429-150521/UnsortedNTrep1.sorted.mappUni.delDupl.bam.wig.bg',
-    skip = 1,
-    col_names = c('chr', 'start', 'end', 'S0'),
-    delim = '\t'
-)
-
-#load files
-dir = c(
-    '/Volumes/Storage2/RT_DATA/RO_data_second_analysis/50kb_smooth_15M/',
-    '/Volumes/Storage2/RT_DATA/New_DATA/Run_200214/50kb_smooth_15M/'
-)
-
-chr_to_keep=c('chr3', 'chr16')
-
-
-AphRO = foreach(
-    i = 1:2,
-    .combine = 'rbind',
-    .packages = c('tidyverse', 'foreach')
-) %do% {
-    Files = list.files(dir[i])
-    Files = Files[grep(x = Files, pattern = 'Rep5-AphiRO16h|aph-RO-16h')]
-    Files = Files[grep(x = Files, pattern = '.bg$|.bedgraph$')]
-    
-    foreach(File = Files,
-            .combine = 'rbind',
-            .packages = 'tidyverse') %do% {
-                read_delim(
-                    paste0(dir[i], File),
-                    col_names = c('chr', 'start', 'end', 'reads'),
-                    delim = '\t'
-                ) %>%
-                    mutate(
-                        Condition = paste0('AphRO', i),
-                        phase = str_extract(File, pattern = '[SG][1-4]'),
-                        rep = i,
-                        phase=case_when(
-                            phase=='G1'~'G1/S1',
-                            phase=='S1'~'S2',
-                            phase=='S2'~'S3',
-                            phase=='S3'~'S4',
-                            phase=='S4'~'S5',
-                            phase=='G2'~'S6/G2/M'
-                            
-                        )
-                    ) %>%
-                    inner_join(to_norm) %>%
-                    inner_join(s0) %>%
-                    group_by(Condition, rep, phase) %>%
-                    mutate(
-                        reads_s0 = reads - S0 - th,
-                        reads = ifelse(
-                            reads <= 0 |
-                                reads_s0 <= 0 |
-                                reads > quantile(reads, .9999)[[1]],
-                            0,
-                            reads_s0
-                        ),
-                        reads = Normalize_factor* reads / sum(reads)
-                        
-                    ) %>%
-                    ungroup() %>%
-                    dplyr::select(-reads_s0)%>%
-                    filter(chr %in% chr_to_keep) 
-                
-                
-                
-            }
-}
-
-
-dir = c(
-    '/Volumes/Storage2/RT_DATA/RO_data_second_analysis/50kb_smooth_15M/',
-    '/Volumes/Storage2/RT_DATA/Old_DATA/Repliseq_profiles_50kb_smooth_15Mreads/Run_171107/',
-    '/Volumes/Storage2/RT_DATA/Old_DATA/Repliseq_profiles_50kb_smooth_15Mreads/Run_15-381_run160308/',
-    '/Volumes/Storage2/RT_DATA/Old_DATA/Repliseq_profiles_50kb_smooth_15Mreads/Run_15-235-1/'
-)
-
-Aph = foreach(
-    i = c(1,4),
-    .combine = 'rbind',
-    .packages = c('tidyverse', 'foreach')
-) %do% {
-    Files = list.files(dir[i])
-    Files = Files[grepl(x = Files, pattern = 'Aph16hrep|Aph-600nM-16h|Aph16hDT4')]
-    Files = Files[grep(x = Files, pattern = '.bg$|.bedgraph$')]
-    
-    foreach(File = Files,
-            .combine = 'rbind',
-            .packages = 'tidyverse') %do% {
-                read_delim(
-                    paste0(dir[i], File),
-                    col_names = c('chr', 'start', 'end', 'reads'),
-                    delim = '\t'
-                ) %>%
-                    mutate(
-                        Condition = paste0('Aph', i),
-                        phase = str_extract(File, pattern = '[SG][1-4]'),
-                        rep = i,
-                        phase=case_when(
-                            phase=='G1'~'G1/S1',
-                            phase=='S1'~'S2',
-                            phase=='S2'~'S3',
-                            phase=='S3'~'S4',
-                            phase=='S4'~'S5',
-                            phase=='G2'~'S6/G2/M'
-                            
-                        )
-                    ) %>%
-                    inner_join(to_norm) %>%
-                    inner_join(s0) %>%
-                    group_by(Condition, rep, phase) %>%
-                    mutate(
-                        reads_s0 = reads - S0 - th,
-                        reads = ifelse(
-                            reads <= 0 |
-                                reads_s0 <= 0 |
-                                reads > quantile(reads, .9999)[[1]],
-                            0,
-                            reads_s0
-                        ),
-                        reads = Normalize_factor* reads / sum(reads)
-                        
-                    ) %>%
-                    ungroup() %>%
-                    dplyr::select(-reads_s0)%>%
-                    filter(chr %in% chr_to_keep) 
-            }
-}
-
-
-dir = c(
-    '/Volumes/Storage2/RT_DATA/RO_data_second_analysis/50kb_smooth_15M/',
-    '/Volumes/Storage2/RT_DATA/Old_DATA/Repliseq_profiles_50kb_smooth_15Mreads/Run_15-381-2/',
-    '/Volumes/Storage2/RT_DATA/New_DATA/Run_180719/50kb_smooth_15M/',
-    '/Volumes/Storage2/RT_DATA/Old_DATA/Repliseq_profiles_50kb_smooth_15Mreads/Run_150429-150521/'
-)
-
-NT = foreach(
-    i = 2:4,
-    .combine = 'rbind',
-    .packages = c('tidyverse', 'foreach')
-) %do% {
-    Files = list.files(dir[i])
-    Files = Files[grepl(x = Files, pattern = 'NT.*[GS]')]
-    Files = Files[!grepl(x = Files, pattern = 'Aph2h')]
-    Files = Files[grep(x = Files, pattern = '.bg$|.bedgraph$')]
-    
-    
-    foreach(File = Files,
-            .combine = 'rbind',
-            .packages = 'tidyverse') %do% {
-                read_delim(
-                    paste0(dir[i], File),
-                    col_names = c('chr', 'start', 'end', 'reads'),
-                    delim = '\t'
-                ) %>%
-                    mutate(
-                        Condition = paste0('NT', i),
-                        phase = str_extract(File, pattern = '[SG][1-4]'),
-                        rep = i,
-                        phase=case_when(
-                            phase=='G1'~'G1/S1',
-                            phase=='S1'~'S2',
-                            phase=='S2'~'S3',
-                            phase=='S3'~'S4',
-                            phase=='S4'~'S5',
-                            phase=='G2'~'S6/G2/M'
-                            
-                        )
-                    ) %>%
-                    inner_join(to_norm) %>%
-                    inner_join(s0) %>%
-                    group_by(Condition, rep, phase) %>%
-                    mutate(
-                        reads_s0 = reads - S0 - th,
-                        reads = ifelse(
-                            reads <= 0 |
-                                reads_s0 <= 0 |
-                                reads > quantile(reads, .9999)[[1]],
-                            0,
-                            reads_s0
-                        ),
-                        reads = Normalize_factor* reads / sum(reads)
-                    ) %>%
-                    ungroup() %>%
-                    dplyr::select(-reads_s0)%>%
-                    filter(chr %in% chr_to_keep) 
-            }
-}
-
-
-dir = '/Volumes/Storage2/RT_DATA/New_DATA/Run_181210/50kb_smooth_15M/'
-
-HU = foreach(
-    i = 1,
-    .combine = 'rbind',
-    .packages = c('tidyverse', 'foreach')
-) %do% {
-    Files = list.files(dir[i])
-    Files = Files[grepl(x = Files, pattern = '^HU')]
-    Files = Files[grep(x = Files, pattern = '.bg$|.bedgraph$')]
-    
-    foreach(File = Files,
-            .combine = 'rbind',
-            .packages = 'tidyverse') %do% {
-                phase = read_delim(
-                    paste0(dir[i], File),
-                    col_names = c('chr', 'start', 'end', 'reads'),
-                    delim = '\t'
-                ) %>%
-                    mutate(
-                        Condition = paste0('HU', i),
-                        phase = str_extract(File, pattern = '[SG][1-4]'),
-                        rep = i,
-                        phase=case_when(
-                            phase=='G1'~'G1/S1',
-                            phase=='S1'~'S2',
-                            phase=='S2'~'S3',
-                            phase=='S3'~'S4',
-                            phase=='S4'~'S5',
-                            phase=='G2'~'S6/G2/M'
-                            
-                        )
-                    ) %>%
-                    inner_join(to_norm) %>%
-                    inner_join(s0) %>%
-                    group_by(Condition, rep, phase) %>%
-                    mutate(
-                        reads_s0 = reads - S0 - th,
-                        reads = ifelse(
-                            reads <= 0 |
-                                reads_s0 <= 0 |
-                                reads > quantile(reads, .9999)[[1]],
-                            0,
-                            reads_s0
-                        ),
-                        reads = Normalize_factor* reads / sum(reads)
-                    ) %>%
-                    ungroup() %>%
-                    dplyr::select(-reads_s0)%>%
-                    filter(chr %in% chr_to_keep) 
-            }
-}
-
-
-all_phase_1kb = rbind(
-    Aph,
-    AphRO,
-    NT,
-    HU 
-)
-
-
-all_phase_1kb%>%write_tsv(paste0('All_normalised_Tracks_',
-                                 paste(chr_to_keep,collapse = '_'),'_1kb_smoothed_normalised_with_simXY.tsv'))
-

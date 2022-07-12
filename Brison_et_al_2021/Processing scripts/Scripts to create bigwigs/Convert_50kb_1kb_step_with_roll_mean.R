@@ -2,7 +2,7 @@ folder='~/Desktop/RO_paper_bw_tracks/'
 sub_f='50Kb_1kb_step_smoothed_with_roll_mean/'
 
 system(paste0('mkdir ',folder,' ',folder,sub_f))
-#Normalise with simulation data
+#Normalize with simulation data
 #produce files for further analysis
 library(tidyverse)
 library(zoo)
@@ -55,10 +55,10 @@ results=results%>%drop_na()%>%
     ungroup()%>%
     mutate(Normalize_factor=90000000*Forks/sum(Forks))
 
-to_norm = read_tsv('All_normalised_Tracks_50adj_normalised_with_sim_periodic_1kbXY_ATRiadd.tsv') %>% group_by(Condition, phase, rep, Normalize_factor) %>% summarise(th = min(th))
+to_norm = read_tsv('All_normalised_Tracks_50adj_normalised_with_sim_periodic_1kbXY.tsv') %>% group_by(Condition, phase, rep, Normalize_factor) %>% summarise(th = min(th))
 #load 50kb smoothed tracks and average them
 s0 = read_delim(
-    '/Volumes/Storage2/RT_DATA/Old_DATA/1kb/Run_150429-150521/UnsortedNTrep1.sorted.mappUni.delDupl.bam.bg',
+    '/Volumes/Storage/RT_DATA/Run_150521/1kb/UnsortedNTrep1_delDupl.bam.bedgraph',
     skip = 1,
     col_names = c('chr', 'start', 'end', 'S0'),
     delim = ' '
@@ -71,8 +71,8 @@ s0 = read_delim(
 
 #load files
 dir = c(
-    '/Volumes/Storage2/RT_DATA/RO_data_second_analysis/1kb/',
-    '/Volumes/Storage2/RT_DATA/New_DATA/Run_200214/1kb/'
+    '/Volumes/Storage/RT_DATA/Run_160308//1kb/',
+    '/Volumes/Storage/RT_DATA/Run_200214/1kb/'
 )
 
 
@@ -143,14 +143,12 @@ AphRO = foreach(
 
 
 dir = c(
-    '/Volumes/Storage2/RT_DATA/RO_data_second_analysis/1kb/',
-    '/Volumes/Storage2/RT_DATA/Old_DATA/1kb/Run_171107/',
-    '/Volumes/Storage2/RT_DATA/Old_DATA/1kb/Run_15-381_run160308/',
+    '/Volumes/Storage/RT_DATA/Run_141216/1kb/',
     '/Volumes/Storage/RT_DATA/Run_150724/1kb/'
 )
 
 Aph = foreach(
-    i = c(1,4),
+    i = 1:2,
     .combine = 'rbind',
     .packages = c('tidyverse', 'foreach','zoo')
 ) %do% {
@@ -218,15 +216,15 @@ Aph = foreach(
 }
 
 
+
 dir = c(
-    '/Volumes/Storage2/RT_DATA/RO_data_second_analysis/1kb/',
     '/Volumes/Storage/RT_DATA/Run_170125/1kb/',
-    '/Volumes/Storage2/RT_DATA/New_DATA/Run_180719/1kb/',
-    '/Volumes/Storage2/RT_DATA/Old_DATA/1kb/Run_150429-150521/'
+    '/Volumes/Storage/RT_DATA/Run_150521/1kb/',
+    '/Volumes/Storage/RT_DATA/Run_180719/1kb/'
 )
 
 NT = foreach(
-    i = 2:4,
+    i = 1:3,
     .combine = 'rbind',
     .packages = c('tidyverse', 'foreach','zoo')
 ) %do% {
@@ -294,7 +292,7 @@ NT = foreach(
 }
 
 
-dir = '/Volumes/Storage2/RT_DATA/New_DATA/Run_181210/1kb/'
+dir = '/Volumes/Storage/RT_DATA/Run_181210/1kb/'
 
 HU = foreach(
     i = 1,
@@ -427,80 +425,11 @@ ATRiHU = foreach(
 }
 
 
-
-dir = '/Volumes/Storage2/RT_DATA/New_DATA/Run_190402/1kb/'
-
-ATRi = foreach(
-    i = 1,
-    .combine = 'rbind',
-    .packages = c('tidyverse', 'foreach','zoo')
-) %do% {
-    Files = list.files(dir[i])
-    Files = Files[grepl(x = Files, pattern = 'IA')]
-    Files = Files[grep(x = Files, pattern = '.bg$|.bedgraph$')]
-    
-    foreach(File = Files,
-            .combine = 'rbind',
-            .packages = c('tidyverse','zoo')) %dopar% {
-                
-                C = paste0('ATRi', i)
-                P= str_extract(File, pattern = '[SG][1-4]')
-                read_delim(
-                    paste0(dir[i], File),
-                    col_names = c('chr', 'start', 'end', 'reads'),
-                    skip = 1,
-                    delim = ' '
-                    ) %>%
-                    group_by(chr) %>% 
-                    mutate(reads = rollmean(reads, k = 50, fill = NA)) %>%
-                    drop_na() %>% ungroup() %>%
-                    mutate(reads = (15 * 10 ^ 6) * reads / sum(reads)) %>%
-                    mutate(
-                        Condition = C,
-                        phase = P,
-                        rep = i,
-                        phase=case_when(
-                            phase=='G1'~'G1/S1',
-                            phase=='S1'~'S2',
-                            phase=='S2'~'S3',
-                            phase=='S3'~'S4',
-                            phase=='S4'~'S5',
-                            phase=='G2'~'S6/G2/M'
-
-                        )
-                    ) %>%
-                    inner_join(to_norm) %>%
-                    inner_join(s0) %>%
-                    group_by(Condition, rep, phase) %>%
-                    mutate(
-                        reads_s0 = reads - S0 - th,
-                        reads = ifelse(
-                            reads <= 0 |
-                                reads_s0 <= 0 |
-                                reads > quantile(reads, .9999)[[1]],
-                            0,
-                            reads_s0
-                        ),
-                        reads = Normalize_factor* reads / sum(reads)
-                    ) %>%
-                    ungroup() %>%
-                    dplyr::select(-reads_s0)%>%
-                    dplyr::select(chr,start,end,reads)%>%
-                    arrange(chr,start)%>%
-                    write_tsv(paste0(folder,sub_f,C,'_',str_replace_all(string = P,pattern = '/',replacement = '-'),'.bedGraph'),col_names = F)
-                
-                tibble( Condition=C,
-                        Phase=P,
-                        Directory= paste0(folder,sub_f,C,'_',str_replace_all(string = P,pattern = '/',replacement = '-'),'.bedGraph'))
-            }
-}
-
 all = rbind(
     Aph,
     AphRO,
     NT,
     HU ,
-    ATRi,
     ATRiHU
 )
 
@@ -653,6 +582,7 @@ stopCluster(cl)
 
 system(paste0("rename 's/AphRO/ARO/g' ",folder,sub_f,"*"))
 system(paste0("rename 's/ATRiHU/HU+ATRi/g' ",folder,sub_f,"*"))
+
 cov=tibble(
     old=c('_G1.bedGraph','_G2.bedGraph','_S4.bedGraph','_S3.bedGraph','_S2.bedGraph','_S1.bedGraph'),
     new=c('_G1-S1.bedGraph','_S6-G2-M.bedGraph','_S5.bedGraph','_S4.bedGraph','_S3.bedGraph','_S2.bedGraph')

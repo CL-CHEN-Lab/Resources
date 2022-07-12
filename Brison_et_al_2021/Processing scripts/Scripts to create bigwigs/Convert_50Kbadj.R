@@ -4,9 +4,9 @@ sub_f='50Kb_adj/'
 
 system(paste0('mkdir ',folder,' ',folder,sub_f))
 
-all_phase = read_tsv('All_normalised_Tracks_50adj_normalised_with_sim_periodic_1kbXY_ATRiadd.tsv')
-URI = read_tsv('URi_simulation_periodic_1kbXY_ATRIadd.tsv')
-S50 = read_tsv('S50_simulation_periodic_1kbXY_ATRiadd.tsv')
+all_phase = read_tsv('All_normalised_Tracks_50adj_normalised_with_sim_periodic_1kbXY.tsv')
+URI = read_tsv('URi_simulation_periodic_1kbXY.tsv')
+S50 = read_tsv('S50_simulation_periodic_1kbXY.tsv')
 
 
 for (condition in unique(all_phase$Condition)){
@@ -24,6 +24,7 @@ for (condition in unique(all_phase$Condition)){
     }
     
 }
+
 for (condition in unique(URI$Condition)){
         
     URI%>%
@@ -34,6 +35,7 @@ for (condition in unique(URI$Condition)){
             write_tsv(paste0(folder,sub_f,'URI_',condition,'.bedGraph'),col_names = F)
         
 }
+
 for (condition in unique(S50$Condition)){
     
     S50%>%
@@ -43,6 +45,7 @@ for (condition in unique(S50$Condition)){
         write_tsv(paste0(folder,sub_f,'S50_',condition,'.bedGraph'),col_names = F)
     
 }
+
 #average
 
 tracks = all_phase %>% ungroup() %>%
@@ -73,7 +76,6 @@ for (condition in unique(tracks$Condition)){
 }
 
 #files renaming 
-
 system(paste0("rename 's/AphRO/ARO/g' ",folder,sub_f,"*"))
 system(paste0("rename 's/ATRiHU/HU+ATRi/g' ",folder,sub_f,"*"))
 

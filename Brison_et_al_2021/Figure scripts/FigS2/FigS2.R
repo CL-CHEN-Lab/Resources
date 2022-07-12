@@ -1,5 +1,5 @@
-output_dir='~/Desktop/Figure_paper_to_update/FigS3'
-system(paste0('mkdir ',output_dir))
+output_dir = '~/Desktop/Figure_paper_to_update/FigS2'
+system(paste0('mkdir ', output_dir))
 library(tidyverse)
 library(zoo)
 library(gridGraphics)
@@ -7,7 +7,7 @@ library(cowplot)
 
 # general pic settings
 tex_size = 7
-label_text_size=11
+label_text_size = 11
 font = 'Arial'
 fontface = "plain"
 line_size = 0.25
@@ -27,7 +27,7 @@ general_theme = theme_classic() + theme(
         size = tex_size,
         face = fontface,
         color = 'black',
-        margin = margin(b=0)
+        margin = margin(b = 0)
     ),
     strip.text.y = element_text(angle = 90),
     legend.text = element_text(
@@ -47,28 +47,30 @@ general_theme = theme_classic() + theme(
         size = tex_size,
         face = fontface,
         color = 'black'
-    ),line = element_line(size = line_size),
+    ),
+    line = element_line(size = line_size),
     strip.background = element_blank(),
     panel.border = element_blank(),
-    panel.spacing=unit(1,'mm'),
-    legend.key.size = unit(8,'pt'),
-    plot.margin=unit(c(0,0,0,0),"cm"),
-    legend.margin=margin(0,0,0,0),
-    legend.box.margin=margin(0,0,0,0), 
+    panel.spacing = unit(1, 'mm'),
+    legend.key.size = unit(8, 'pt'),
+    plot.margin = unit(c(0, 0, 0, 0), "cm"),
+    legend.margin = margin(0, 0, 0, 0),
+    legend.box.margin = margin(0, 0, 0, 0),
     legend.spacing = unit(0, 'cm'),
     legend.background = element_blank(),
     axis.title.y.right = element_text(
         family = font,
         size = tex_size,
         face = fontface,
-        color = 'black',angle = 90
+        color = 'black',
+        angle = 90
     ),
     legend.title = element_text(vjust = 1.25)
 )
 
 
 #load FACS profile
-facs = read_csv('./FACS/AphRO.csv', col_names = F)
+facs = read_csv('FACS/AphRO.csv', col_names = F)
 
 gates = tibble(
     phase = c('G1_all', 'G1/S1', 'S2', 'S3', 'S4', 'S5', 'S6/G2/M'),
@@ -127,18 +129,16 @@ plot_facs = facs %>%
     #add text
     geom_text(
         data = gates_to_plot,
-        aes(
-            x = m,
+        aes(x = m,
             y = 270,
-            label = phase
-        ),
+            label = phase),
         color = 'black',
         size = tex_size / 3,
         family = font,
         fontface = fontface,
         vjust = -0.55
     ) +
-    # add second scale 
+    # add second scale
     scale_x_continuous(sec.axis = sec_axis(
         ~ 100 * (. - unique(gates$G1_peak)) / unique(gates$G2_peak - gates$G1_peak),
         breaks = c(0, 25, 50, 75, 100),
@@ -155,7 +155,7 @@ plot_facs = facs %>%
 #load results form simulation
 results = read_tsv('Results_periodic_simulationXY_1kb.tsv')
 
-# id highest point normalize 
+# id highest point normalize
 MAX_ratio = results %>% group_by(cycles) %>% summarise(
     Initiations = mean(Initiations, na.rm = T),
     unreplicated_dna = mean(unreplicated_dna, na.rm = T)
@@ -166,7 +166,7 @@ MAX_ratio = results %>% group_by(cycles) %>% summarise(
 
 # firing has been smoothed
 simulation_percent_firing = results %>%
-    # per cicle calculate mean values of the parameters 
+    # per cicle calculate mean values of the parameters
     group_by(cycles) %>%
     summarise(
         Initiations = mean(Initiations),
@@ -184,16 +184,16 @@ simulation_percent_firing = results %>%
         )
     ) %>%
     ggplot() +
-    # plot cycle vs normalized ratio 
+    # plot cycle vs normalized ratio
     geom_line(
         aes(cycles,
             Ratio_firing_unreplicated / MAX_ratio),
         color = 'red',
         size = line_size
     ) +
-    # add percentage of rep DNA 
+    # add percentage of rep DNA
     geom_line(aes(cycles, percent), color = 'blue', size = line_size) +
-    # add scales 
+    # add scales
     scale_y_continuous(
         name = 'Replicated DNA',
         labels = scales::percent,
@@ -203,10 +203,10 @@ simulation_percent_firing = results %>%
             Mb ^ -1,
             min ^ -1,
             ')'
-        )), trans = ~ . * MAX_ratio*1000)
+        )), trans = ~ . * MAX_ratio * 1000)
     ) +
     #add label
-    xlab('Cycles') + general_theme + 
+    xlab('Cycles') + general_theme +
     #set colors
     theme(
         axis.title.y.left  = element_text(
@@ -225,11 +225,11 @@ simulation_percent_firing = results %>%
 
 # number of active forks
 forks = results %>%
-    # average percent and forks over cycle 
+    # average percent and forks over cycle
     group_by(cycles) %>%
     summarise(percent = mean(percent),
               Forks = mean(Forks)) %>%
-    #plot percent vs normalise nforks 
+    #plot percent vs normalise nforks
     ggplot() +
     geom_line(aes(percent / 100, Forks / max(Forks)), size = line_size) +
     #add gates
@@ -239,20 +239,21 @@ forks = results %>%
             xmin = percent_start / 100,
             xmax = (percent_end - 0.6) / 100,
             y = 0.5,
-           
+            
             height = 0.05
         ),
         color = 'black' ,
         size = line_size
     ) +
-    #add text 
+    #add text
     geom_text(
         data = gates_to_plot,
         aes(
             x = (percent_start / 100 + percent_end / 100) / 2,
             y = 0.5,
             label = phase
-        ),color = 'black',
+        ),
+        color = 'black',
         vjust = -0.55,
         size = tex_size / 3,
         family = font,
@@ -265,19 +266,17 @@ forks = results %>%
 
 #load data
 
-all_phase = read_tsv('All_normalised_Tracks_50adj_normalised_with_sim_periodic_1kbXY_ATRiadd.tsv')%>%
-    filter(
-        Condition %in% c("NT2","NT3","NT4","Aph1","Aph4","AphRO1","AphRO2","HU1","ATRiHU1")
-    )
+all_phase = read_tsv('All_normalised_Tracks_50adj_normalised_with_sim_periodic_1kbXY.tsv') %>%
+    # exclude conditions without replicates
+    filter(!Condition %in% c('HU1', "ATRiHU1", "ATRiHU1", "ATRiAph1","ATRi1","ATRi2"))
 
-x = all_phase %>% 
+x = all_phase %>%
     # remove missing values from each track
-    filter(reads > 0) %>% 
-    #select columns 
+    filter(reads > 0) %>%
+    #select columns
     dplyr::select(chr, start, end, reads, Condition, phase) %>%
-    # exclude conditions without replcates
-    filter(!Condition %in% c('HU1',"ATRiHU1","ATRi1"))%>%
-    # spred and drop incomplete lines 
+    
+    # spread and drop incomplete lines
     spread(Condition, reads, fill = NA) %>%
     drop_na() %>%
     ungroup() %>%
@@ -290,35 +289,34 @@ x = all_phase %>%
 r_names = rownames(x)
 rownames(x) = case_when(
     r_names == 'Aph1' ~ 'Aph 1',
-    r_names == 'Aph4' ~ 'Aph 2',
+    r_names == 'Aph2' ~ 'Aph 2',
     r_names == 'AphRO1' ~ 'ARO 1',
     r_names == 'AphRO2' ~ 'ARO 2',
-    r_names== "ATRi1" ~ 'ATRi',
-    r_names=="ATRiHU1" ~ 'ATRiHU',
-    r_names == 'NT2' ~ 'NT 1',
-    r_names == 'NT3' ~ 'NT 2',
-    r_names == 'NT4' ~ 'NT 3'
+    r_names == 'HU1' ~ 'HU',
+    r_names == 'NT1' ~ 'NT 1',
+    r_names == 'NT2' ~ 'NT 2',
+    r_names == 'NT3' ~ 'NT 3',
+    r_names == 'ATRiHU1' ~ 'Aph+HU'
 )
 c_names = colnames(x)
 colnames(x) = case_when(
     c_names == 'Aph1' ~ 'Aph 1',
-    c_names == 'Aph4' ~ 'Aph 2',
+    c_names == 'Aph2' ~ 'Aph 2',
     c_names == 'AphRO1' ~ 'ARO 1',
     c_names == 'AphRO2' ~ 'ARO 2',
-    c_names == 'NT2' ~ 'NT 1',
-    c_names == 'NT3' ~ 'NT 2',
-    c_names == 'NT4' ~ 'NT 3',
-    c_names== "ATRi1" ~ 'ATRi',
-    c_names=="ATRiHU1" ~ 'ATRiHU'
+    c_names == 'HU1' ~ 'HU',
+    c_names == 'NT1' ~ 'NT 1',
+    c_names == 'NT2' ~ 'NT 2',
+    c_names == 'NT3' ~ 'NT 3',
+    c_names == 'ATRiHU1' ~ 'Aph+HU'
 )
-
 # plot heatmap
 p = x %>% as_tibble() %>%
-    # add row names 
+    # add row names
     mutate(against = rownames(x)) %>%
-    # reshape 
+    # reshape
     gather(Sample, Value, -against) %>%
-    # order by colnames levels
+    # order by col names levels
     mutate(
         Sample = factor(Sample, levels = colnames(x)),
         against = factor(against, levels = colnames(x))
@@ -328,12 +326,13 @@ p = x %>% as_tibble() %>%
     geom_tile(aes(against, Sample, fill = Value)) +
     # plot value
     geom_text(
-        aes(against, Sample, label = round(Value, 2)),
+        aes(against, Sample, 
+            label = format(round(Value, 2)),nsmall =2),
         size = tex_size / 3,
         family = font,
         fontface = fontface,
         color = 'white'
-    ) + 
+    ) +
     # style
     general_theme +
     theme(
@@ -351,32 +350,37 @@ p = x %>% as_tibble() %>%
         legend.key.height = unit(0.3, "cm"),
         legend.position = 'right'
     ) +
-    # color gradient 
-    scale_fill_gradient(low = 'green', high = 'darkgreen', name = 'Pearson correlation', oob=squish,breaks=c(0.5,0.75,1)) +
-    # impose square shape
-    coord_equal()
+    # color gradient
+    scale_fill_gradient(
+        low = 'green',
+        high = 'darkgreen',
+        name = 'Pearson\ncorrelation',
+        oob = squish,
+        breaks = c(0.5, 0.75, 1)
+    )+coord_equal()
 
 #load data of conditions with replicas
-all_phase = read_tsv('All_normalised_Tracks_50adj_normalised_with_sim_periodic_1kbXY_ATRiadd.tsv')%>%
-    filter(
-        Condition %in% c("NT2","NT3","NT4","Aph1","Aph4","AphRO1","AphRO2")
-    )
-
+all_phase = read_tsv('All_normalised_Tracks_50adj_normalised_with_sim_periodic_1kbXY.tsv')   %>%
+    # exclude conditions without replicates
+    filter(!Condition %in% c('HU1', "ATRiHU1", "ATRiAph1","ATRi1","ATRi2"))
 #load URI of conditions with replicas
-URI = read_tsv('URi_simulation_periodic_1kbXY_ATRIadd.tsv') %>%
-    filter(!Condition %in% c('HU',"ATRiHU","ATRi"))
-    
+URI = read_tsv('URi_simulation_periodic_1kbXY.tsv')  %>%
+    # exclude conditions without replicates
+    filter(!Condition %in% c('HU', "ATRiHU", "ATRiAph","ATRi"))
+
 
 FHIT = tibble(
     chr = 'chr3',
     start = 59735035,
     end = 61237087,
-    gene='FHIT'
+    gene = 'FHIT'
 )
-WWOX = tibble(chr = 'chr16',
-              start = 78133310,
-              end = 79246567,
-              gene='WWOX')
+WWOX = tibble(
+    chr = 'chr16',
+    start = 78133310,
+    end = 79246567,
+    gene = 'WWOX'
+)
 
 plot_fragile_site = function(Tracks,
                              URI,
@@ -388,19 +392,18 @@ plot_fragile_site = function(Tracks,
                              tex_size = 'Courier',
                              fontface = 'bold',
                              flanking = 2 * 10 ^ 6,
-                             pos_heatmap=0.5,
-                             heatmap_limits=c(-3,3), 
-                             n_fill_breaks=3,
-                             more_or_less_label=c('N','L','M','B')) {
-    
-    more_or_less_label=more_or_less_label[1]
-    n_fill_breaks=n_fill_breaks-1
+                             pos_heatmap = 0.5,
+                             heatmap_limits = c(-3, 3),
+                             n_fill_breaks = 3,
+                             more_or_less_label = c('N', 'L', 'M', 'B')) {
+    more_or_less_label = more_or_less_label[1]
+    n_fill_breaks = n_fill_breaks - 1
     
     #invert start and end if needed
     position = position %>%
         mutate(s = ifelse(start > end, end, start),
                e = ifelse(start > end, start, end)) %>%
-        dplyr::select(chr, 'start' = s, 'end' = 'e',gene)
+        dplyr::select(chr, 'start' = s, 'end' = 'e', gene)
     
     # select bins of interest over tracks ± flanking
     tracks = Tracks %>% ungroup() %>%
@@ -417,31 +420,42 @@ plot_fragile_site = function(Tracks,
         mutate(Condition_2 = str_remove(Condition, '[1-9]{1,2}$')) %>%
         group_by(Condition_2, chr, start, end, phase) %>%
         mutate(reads_mean = mean(reads)) %>%
-        ungroup()%>%
-        #Chnge names of ARO and ATRiHU
+        ungroup() %>%
+        #Change names of ARO,ATRiAph and ATRiHU
         mutate(Condition_2 = factor(
-            case_when(Condition_2 == 'AphRO' ~ 'ARO',
-                      Condition_2 == "ATRiHU" ~ 'HU+ATRi',
-                      T ~ Condition_2),
-            levels = c('NT', 'Aph', 'ARO')
+            case_when(
+                Condition_2 == 'AphRO' ~ 'ARO',
+                Condition_2 == "ATRiHU" ~ 'HU+ATRi',
+                T ~ Condition_2
+            ),
+            levels = c('NT', 'Aph', 'ARO', 'HU', 'HU+ATRi')
         ),
-        #calculae center of the bin
+        #calculate center of the bin
         cent = (start + end) / 2)
     
     #average track
-    track_mean=tracks%>%dplyr::select(Condition,Condition_2,cent,chr,start,end,reads_mean,phase)%>%unique()
-    # remove average from the other tracks 
-    tracks=tracks%>%dplyr::select(-reads_mean)
-   
-     # calculate max to set ylim
+    track_mean = tracks %>% dplyr::select(Condition,
+                                          Condition_2,
+                                          cent,
+                                          chr,
+                                          start,
+                                          end,
+                                          reads_mean,
+                                          phase) %>% unique()
+    # remove average from the other tracks
+    tracks = tracks %>% dplyr::select(-reads_mean)
+    
+    # calculate max to set ylim
     max = round(max(tracks %>% pull(reads)))
     
-    #URI track 
+    #URI track
     URi_toplot = URI %>%
         #select region of interest
-        filter(chr == position$chr,
-               start >= position$start -flanking,
-               end <= position$end + flanking) %>%
+        filter(
+            chr == position$chr,
+            start >= position$start - flanking,
+            end <= position$end + flanking
+        ) %>%
         # create a NT track of NA and add it to the data
         mutate(NT = NA) %>%
         spread(Condition, URI) %>%
@@ -449,7 +463,7 @@ plot_fragile_site = function(Tracks,
         # add a name for the track
         mutate(phase = 'URI',
                rep = ' ') %>%
-        #calculate the center of the track 
+        #calculate the center of the track
         mutate(cent = start + (end - start) / 2) %>%
         #rename and convert into factors
         mutate(Condition = factor(
@@ -458,25 +472,32 @@ plot_fragile_site = function(Tracks,
             levels = c('NT', 'Aph', 'ARO')
         ))
     # max uri to set limits
-    URI_max=max(URi_toplot$URI,na.rm=T)
+    URI_max = max(URi_toplot$URI, na.rm = T)
     
     
-    p1 = 
+    p1 =
         ggplot() +
         # prepare facet
         facet_grid(phase ~ Condition_2) +
         #plot single tracks
-        geom_line(data=tracks,aes(x = cent, y = reads, group = Condition),
-                  color = '#636466',
-                  size = line_size) +
+        geom_line(
+            data = tracks,
+            aes(x = cent, y = reads, group = Condition),
+            color = '#636466',
+            size = line_size
+        ) +
         #plot average tracks
-        geom_line(data=track_mean,aes(x = cent, y = reads_mean, color = Condition_2), size =
-                      line_size)+
+        geom_line(data = track_mean,
+                  aes(x = cent, y = reads_mean, color = Condition_2),
+                  size =
+                      line_size) +
         #genes positions
         geom_vline(xintercept = position$end,
-                   color = 'purple', size =line_size) +
+                   color = 'purple',
+                   size = line_size) +
         geom_vline(xintercept = position$start,
-                   color = 'purple', size =line_size) +
+                   color = 'purple',
+                   size = line_size) +
         #general style
         style +
         theme(
@@ -497,77 +518,110 @@ plot_fragile_site = function(Tracks,
             )
         ) +
         # plot x ax line
-        geom_hline(yintercept = -Inf, size =line_size, color='black') +
+        geom_hline(yintercept = -Inf,
+                   size = line_size,
+                   color = 'black') +
         # format axis
         scale_x_continuous(
             labels =  function(x)
                 paste(round(x / 1000000, 2), 'Mb')
         ) +
         # assign colors
-        scale_color_manual(values = c(
-            'Aph' = '#95C11F',
-            'ARO' = '#F9B233',
-            'HU' = '#CA9E67',
-            'NT' = '#36A9E1',
-            'HU+ATRi'='#7D4E24'
-        )) + 
+        scale_color_manual(
+            values = c(
+                'Aph' = '#95C11F',
+                'ARO' = '#F9B233',
+                'HU' = '#CA9E67',
+                'NT' = '#36A9E1',
+                'HU+ATRi' = '#7D4E24'
+            )
+        ) +
         # set xlab
-        xlab('')+
+        xlab('') +
         # fix coord
-        coord_cartesian(xlim = c(position$start - flanking, position$end + flanking))+
+        coord_cartesian(xlim = c(position$start - flanking, position$end +
+                                     flanking)) +
         # add side line
-        geom_vline(xintercept = c(-Inf,Inf), size =line_size)
+        geom_vline(xintercept = c(-Inf, Inf), size = line_size)
     
     #limits
-    segment=tibble(x=c(-Inf,Inf),y=c(-Inf,-Inf),xend=c(-Inf,Inf), yend=c(URI_max,URI_max),Condition=list(c('NT', 'Aph', 'ARO')))%>%
-        unnest(cols = c(Condition))%>%
-        mutate(Condition=factor(Condition,            
-                                levels = c('NT', 'Aph', 'ARO')
-        ))
+    segment = tibble(
+        x = c(-Inf, Inf),
+        y = c(-Inf, -Inf),
+        xend = c(-Inf, Inf),
+        yend = c(URI_max, URI_max),
+        Condition = list(c('NT', 'Aph', 'ARO'))
+    ) %>%
+        unnest(cols = c(Condition)) %>%
+        mutate(Condition = factor(Condition,
+                                  levels = c('NT', 'Aph', 'ARO')))
     
     
-    # color breaks for the heatmap 
-    colo_breaks=seq(heatmap_limits[1], heatmap_limits[2], sum(abs(heatmap_limits)) /
-                        n_fill_breaks)
+    # color breaks for the heatmap
+    colo_breaks = seq(heatmap_limits[1],
+                      heatmap_limits[2],
+                      sum(abs(heatmap_limits)) /
+                          n_fill_breaks)
     # labels for the colors of the heatmap ( if the signal is saturated over that value)
-    labels_colors=tibble(color_breks=colo_breaks,more_or_less_label=more_or_less_label)%>%
+    labels_colors = tibble(color_breks = colo_breaks, more_or_less_label =
+                               more_or_less_label) %>%
         mutate(
-            labels_colors=case_when(
-                
-                more_or_less_label %in% c('B','L') & color_breks==min(color_breks) ~ paste0('≤',colo_breaks),
-                more_or_less_label %in% c('B','M') & color_breks==max(color_breks) ~ paste0('≥',colo_breaks),
+            labels_colors = case_when(
+                more_or_less_label %in% c('B', 'L') &
+                    color_breks == min(color_breks) ~ paste0('≤', colo_breaks),
+                more_or_less_label %in% c('B', 'M') &
+                    color_breks == max(color_breks) ~ paste0('≥', colo_breaks),
                 T ~ as.character(colo_breaks)
                 
-            ))%>%pull(labels_colors)
+            )
+        ) %>% pull(labels_colors)
     
-    # URI plot 
+    # URI plot
     p2 = URi_toplot %>%
         ggplot() +
         # draw box
-        geom_segment(data=segment,aes(x=x,xend=xend, y=y,yend=yend), size =line_size,color='black')+
-        # plot URI as line 
+        geom_segment(
+            data = segment,
+            aes(
+                x = x,
+                xend = xend,
+                y = y,
+                yend = yend
+            ),
+            size = line_size,
+            color = 'black'
+        ) +
+        # plot URI as line
         geom_line(aes(x = cent, y = URI), color = 'black', size =
                       line_size) +
         #plot URI as heatmap
-        ggplot2::geom_rect(aes(
-            xmin = start,
-            xmax = end,
-            ymin = unique(segment$yend)+pos_heatmap,
-            ymax = unique(segment$yend)+pos_heatmap+1,
-            fill = URI
-        )) +
+        ggplot2::geom_rect(
+            aes(
+                xmin = start,
+                xmax = end,
+                ymin = unique(segment$yend) + pos_heatmap,
+                ymax = unique(segment$yend) + pos_heatmap + 1,
+                fill = URI
+            )
+        ) +
         # color gradient
         scale_fill_gradient2(
             low = 'red',
             high = 'blue',
             mid = 'white',
-            na.value = "grey", oob=squish,limits=heatmap_limits,breaks=colo_breaks,labels=labels_colors
-        )+
-        # y= -2 line 
-        geom_hline(yintercept = -2, color = 'red', size =line_size) +
+            na.value = "grey",
+            oob = squish,
+            limits = heatmap_limits,
+            breaks = colo_breaks,
+            labels = labels_colors
+        ) +
+        # y= -2 line
+        geom_hline(yintercept = -2,
+                   color = 'red',
+                   size = line_size) +
         # split conditiona and phase
         facet_grid(phase ~ Condition) +
-        # add y label 
+        # add y label
         ylab('URI') +
         # plot style
         style +
@@ -580,30 +634,38 @@ plot_fragile_site = function(Tracks,
             axis.title = element_text(color = 'white')
         ) +
         # add lines for the axes
-        geom_hline(yintercept = -Inf, size =line_size,col='black') +
+        geom_hline(yintercept = -Inf,
+                   size = line_size,
+                   col = 'black') +
         #add lines for the gene body
         geom_vline(xintercept = position$end,
-                   color = 'purple', size =
+                   color = 'purple',
+                   size =
                        line_size) +
         geom_vline(xintercept = position$start,
-                   color = 'purple', size =
+                   color = 'purple',
+                   size =
                        line_size) +
         #add line for the x axis
-        geom_hline(yintercept = -Inf, size =line_size) + 
+        geom_hline(yintercept = -Inf, size = line_size) +
         scale_y_continuous(breaks = c(-2, 0, 2)) +
         #add limits
-        coord_cartesian(xlim = c(position$start - flanking, position$end + flanking))
+        coord_cartesian(xlim = c(position$start - flanking, position$end +
+                                     flanking))
     
-
+    
     # return plot and legend
-    return(list(Plot=plot_grid(
-        p2,
-        p1,
-        rel_heights = c (3, 15),
-        ncol = 1,
-        align = 'v',
-        axis = "l"
-    ),legend=get_legend(p2+theme(legend.position = 'top'))))
+    return(list(
+        Plot = plot_grid(
+            p2,
+            p1,
+            rel_heights = c (3, 15),
+            ncol = 1,
+            align = 'v',
+            axis = "l"
+        ),
+        legend = get_legend(p2 + theme(legend.position = 'top'))
+    ))
 }
 
 FRA3B = plot_fragile_site(
@@ -630,30 +692,39 @@ FRA16D = plot_fragile_site(
 
 Fragiale_sites = plot_grid(
     FRA3B$legend,
-    rel_heights =c(0.1,2),
-    ncol=1,
-    plot_grid(
-    plot_grid(
-    textGrob('FRA3B (FHIT)',gp = gpar(
-        fontsize = tex_size,
-        fontface = fontface,
-        fontfamily = font
-    )),
-    FRA3B$Plot,
+    rel_heights = c(0.1, 2),
     ncol = 1,
-    scale = 1,
-    rel_heights =  c(0.05, 1)),
-plot_grid(
-    textGrob('FRA16D (WWOX)',gp = gpar(
-        fontsize = tex_size,
-        fontface = fontface,
-        fontfamily = font
-    )),
-    FRA16D$Plot,
-    ncol = 1,
-    scale = 1,
-    rel_heights =  c(0.05, 1)
-)))
+    plot_grid(
+        plot_grid(
+            textGrob(
+                'FRA3B (FHIT)',
+                gp = gpar(
+                    fontsize = tex_size,
+                    fontface = fontface,
+                    fontfamily = font
+                )
+            ),
+            FRA3B$Plot,
+            ncol = 1,
+            scale = 1,
+            rel_heights =  c(0.05, 1)
+        ),
+        plot_grid(
+            textGrob(
+                'FRA16D (WWOX)',
+                gp = gpar(
+                    fontsize = tex_size,
+                    fontface = fontface,
+                    fontfamily = font
+                )
+            ),
+            FRA16D$Plot,
+            ncol = 1,
+            scale = 1,
+            rel_heights =  c(0.05, 1)
+        )
+    )
+)
 
 simulation_fig = plot_grid(
     plot_facs,
@@ -677,11 +748,10 @@ ggsave(
         label_size = label_text_size,
         label_fontfamily = font
     ),
-    filename = paste0(output_dir,'/FigS3.pdf'),
+    filename = paste0(output_dir, '/FigS2.pdf'),
     width = 174,
     height = 220,
     limitsize = F,
     units = 'mm',
     device = cairo_pdf
 )
-

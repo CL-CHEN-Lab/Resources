@@ -1,12 +1,12 @@
 #########################################################
 #########################################################
 
-# RUN Fig4A.R first
+# RUN Fig3A.R first
 
 
 #########################################################
 #########################################################
-output_dir='~/Desktop/Figure_paper_to_update/Fig4/Fig4B'
+output_dir='~/Desktop/Figure_paper_to_update/Fig3/Fig3B'
 system(paste0('mkdir -p ',output_dir))
 
 average_profile_small = function(matrix,
@@ -31,7 +31,7 @@ average_profile_small = function(matrix,
             unique()
     }
     
-    #calculate mean of each colum in the matrix and assign position in a df
+    #calculate mean of each column in the matrix and assign position in a df
     x = tibble(value = colMeans(matrix),
                pos = colnames(matrix)) %>%
         # covert position in Factors and convert them into numeric
@@ -65,7 +65,7 @@ average_profile_small = function(matrix,
         geom_vline(xintercept = breaks[c(2, 3)],
                    linetype = 'dashed',
                    color = 'black', size =line_size)+
-        # add rectable around plot 
+        # add rectangle around plot 
         geom_rect(
             data = tibble(
                 xmin = -Inf,
@@ -153,6 +153,7 @@ Heat_maps_small = plot_grid(
             fontface = fontface,
             line_size = line_size
         )+ theme(strip.text = element_blank()),
+        
    
      
         average_profile_small(
@@ -166,14 +167,15 @@ Heat_maps_small = plot_grid(
         )+ theme(strip.text = element_blank()),
       
     nrow = 1,
-    rel_widths = c(1.1, 1.06, 1, 1, 1,1),scale = 0.9
+    rel_widths = c(1.1, 1, 1, 1,1,1),
+    scale = 0.9
 )
 
 #save
 ggsave(
     plot =Heat_maps_small,
-    filename = paste0(output_dir,'/Fig4B.pdf'),
-    width = 17,
+    filename = paste0(output_dir,'/Fig3B.pdf'),
+    width = 19,
     height = 3,
     limitsize = F,
     units = 'cm',

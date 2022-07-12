@@ -1,5 +1,5 @@
-output_dir='~/Desktop/Figure_paper_to_update/Fig3/Fig3D'
-system(paste0('mkdir ',output_dir))
+output_dir='~/Desktop/Figure_paper_to_update/Fig2/Fig2D'
+system(paste0('mkdir -p ',output_dir))
 
 library(extrafont)
 loadfonts(device = "postscript")
@@ -62,32 +62,25 @@ general_theme = theme_classic() + theme(
     legend.title = element_text(vjust = 1.25)
 )
 #load URI
-URI = read_tsv('URi_simulation_periodic_1kbXY_ATRIadd.tsv')%>%
-    filter(
-        Condition %in% c("NT","Aph","AphRO","HU","ATRiHU")
-    )
+URI = read_tsv('URi_simulation_periodic_1kbXY.tsv')
 #load S50
-S50 = read_tsv('S50_simulation_periodic_1kbXY_ATRiadd.tsv')%>%
-    filter(
-        Condition %in% c("NT","Aph","AphRO","HU","ATRiHU")
-    )
-
+S50 = read_tsv('S50_simulation_periodic_1kbXY.tsv')
 #load SDR and t-SDR and merge the annotation
 DR = read_delim(
-    '/Volumes/Storage2/CFS_reference/SDR.bed',
+    '/Volumes/Storage/CFS_reference/SDR.bed',
     col_names = c('chr', 'start', 'end'),
     delim = '\t'
 ) %>%
     left_join(
         read_delim(
-            '/Volumes/Storage2/CFS_reference/t-SDR.bed',
+            '/Volumes/Storage/CFS_reference/t-SDR.bed',
             col_names = c('chr', 'start', 'end'),
             delim = '\t'
         ) %>%
             mutate(DR = 't-SDR')
     ) %>%
     mutate(DR = ifelse(is.na(DR), 'SDR', DR))
-#convert URI into grange and associate infos
+#convert URI into grange and associate info
 URI = URI %>% inner_join(S50 %>% filter(Condition == 'NT') %>% dplyr::select(-Condition)) %>%
     mutate(s50 = ifelse(s50 < 0.5, 'Early', 'Late'))
 
@@ -99,12 +92,12 @@ DR = DR %>%
 
 #find overlaps 
 hits = findOverlaps(query = DR, subject = URI)
-#initialise colum
+#initialize column
 URI$DR = NA
 # check width overlap
 w = width(pintersect(URI[subjectHits(hits)],
                      DR[queryHits(hits)]))
-# select overlpas bigger than 1bp
+# select overlaps bigger than 1bp
 hits = hits[w > 1]
 
 # assign DR type
@@ -113,7 +106,7 @@ URI$DR[subjectHits(hits)] = DR$DR[queryHits(hits)]
 #convert to DF
 URI_SDR = URI %>% as_tibble()
 
-
+#plot
 TSDR_SDR = URI_SDR %>%
     # Change DR == NA to NON SDR, change reformat names samples and convert to factor
     mutate(
@@ -152,5 +145,4 @@ TSDR_SDR = URI_SDR %>%
     #add -2 line
     geom_vline(xintercept = -2,color='red', size = line_size)
 
-ggsave(plot =TSDR_SDR ,filename = paste0(output_dir,'/Fig3D.pdf'),device = cairo_pdf,width = 8 ,height = 4,units = 'cm')
- 
+ggsave(plot =TSDR_SDR ,filename = paste0(output_dir,'/Fig2D.pdf'),device = cairo_pdf,width = 12 ,height = 4,units = 'cm')

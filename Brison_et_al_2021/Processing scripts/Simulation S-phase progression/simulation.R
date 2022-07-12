@@ -81,7 +81,7 @@ ref=read_tsv('./hg38.chr.size',col_names = c('chr','size'))%>%
                           
                         total_cycle=total_cycle+1
                                  #The eukaryotic bell-shaped temporal rate of DNA replication origin firing emanates from a balance between origin activation and passivation Jean-Michel Arbona, Alain Arneodo4, Arach Goldar, Olivier Hyrien, Benjamin Audit1 
-                                 #limiting factors increas gradually as described in 3D replicon distributions arise from stochastic initiation and domino-like DNA replication progression D. Löb, N. Lengert, V. O. Chagin, M. Reinhart, C. S. Casas-Delucchi, M. C. Cardoso & B. Drossel 
+                                 #limiting factors increase gradually as described in 3D replicon distributions arise from stochastic initiation and domino-like DNA replication progression D. Löb, N. Lengert, V. O. Chagin, M. Reinhart, C. S. Casas-Delucchi, M. C. Cardoso & B. Drossel 
                                 Free_factors=Free_factors+round(total_free_factors*
                                                                     ((1-exp(-total_cycle/delay))-(1-exp(-(total_cycle-1)/delay))))
                                 
@@ -94,14 +94,14 @@ ref=read_tsv('./hg38.chr.size',col_names = c('chr','size'))%>%
                                  Free_factors=Free_factors-2*n_of_firing_origins
                                  
                           #progression of the fork
-                          # previous cycle orgins are replicated (value 3, forks)
+                          # previous cycle origins are replicated (value 3, forks)
                           #previous fork position
                           # previous forks pass to stage 5
                           genome[genome == 4] = 5
                           genome[genome == 3] = 4
                           genome[genome == 2] = 3
                           
-                          # id replication foks
+                          # id replication forks
                           
                           forks = which(genome == 3)
                           next_fork_f = forks[!forks %in% border] + 1

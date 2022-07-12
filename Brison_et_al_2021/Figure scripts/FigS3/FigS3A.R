@@ -1,12 +1,12 @@
 #########################################################
 #########################################################
 
-# RUN Fig4A.R, Fig4B and Fig4C first
+# RUN Fig3A.R, Fig3B and Fig3C first
 
 
 #########################################################
 #########################################################
-output_dir='~/Desktop/Figure_paper_to_update/FigS4/FigS4A'
+output_dir='~/Desktop/Figure_paper_to_update/FigS3/FigS3A'
 system(paste0('mkdir -p ',output_dir))
 
 heatmap = function(matrix,
@@ -51,10 +51,10 @@ heatmap = function(matrix,
     matrix = matrix %>% as_tibble() %>%
         # define order of plotting of the groups
         mutate(group = factor(group,levels = group_order)) %>%
-        #assing line number
+        #assign line number
         mutate(line = 1:n())
     
-    #if there is a line order it is used to reoder inside the groups
+    #if there is a line order it is used to reorder inside the groups
     if (!any(is.na(line_order))) {
         matrix = matrix  %>%
             mutate(line = factor(line, levels = line_order),
@@ -84,7 +84,7 @@ heatmap = function(matrix,
         max_y = max(line)
     )%>%filter(!is.infinite(min_x),!is.infinite(max_x),!is.infinite(min_y),!is.infinite(max_y))
     
-    #start plottint
+    #start plotting
     matrix = ggplot(matrix) +
         geom_tile(aes(
             y = line,
@@ -125,7 +125,7 @@ heatmap = function(matrix,
             breaks = colo_breaks,
             labels=labels_colors
         )
-        # if no mid color is assing 
+        # if no mid color is assign 
     } else{
         # calculate breaks positions
         
@@ -208,7 +208,7 @@ heatmap = function(matrix,
             color = 'black',
             size =line_size
         )
-    #return wuth final theme touches
+    #return with final theme touches
     return(
         matrix + theme(
             axis.text.x = element_blank(),
@@ -261,9 +261,9 @@ side_banner = function(group,
 
 #select genes that are bigger than 300 including SDRs
 region_300 = genes[genes$split_size == "≥300kb" ]
-# assifn genes with SDR to a new group
+# assign genes with SDR to a new group
 region_300$split_expression[region_300$split=='SDR']='SDR'
-# calculate matrixes 
+# calculate matrices 
 rt_300 = normalizeToMatrix(
     target = region_300,
     signal =  NT,
@@ -304,6 +304,7 @@ mat_HU_300 = normalizeToMatrix(
     mean_mode = "w0",
     target_ratio = 0.45
 )
+
 mat_ATRiHU_300 = normalizeToMatrix(
     target = region_300,
     signal =  URI,
@@ -403,6 +404,8 @@ HU_Heatmap_300=heatmap(
     n_fill_breaks = 3,
     line_size = line_size,
     legend.position = 'top')
+
+
 ATRIHU_Heatmap_300=heatmap(
     matrix = mat_ATRiHU_300,
     limits = c(-3, 3),
@@ -437,12 +440,12 @@ Heat_maps_300 = plot_grid(
             ),
         
         nrow = 1,
-        rel_widths = c(1.03, 1.05, 1, 1, 1, 1, 0.3),scale = 0.9
+        rel_widths = c(1.03, 1.05, 1, 1,1,1, 0.3),scale = 0.9
     )
 #save
 ggsave(
     plot =Gro_Heatmap_300,
-    filename = paste0(output_dir,'/Gro_Heatmap_300_FigS4A.pdf'),
+    filename = paste0(output_dir,'/Gro_Heatmap_300_FigS3A.pdf'),
     width = 3,
     height = 17,
     limitsize = F,
@@ -451,7 +454,7 @@ ggsave(
 )
 ggsave(
     plot =RT_Heatmap_300,
-    filename = paste0(output_dir,'/RT_Heatmap_300_FigS4A.pdf'),
+    filename = paste0(output_dir,'/RT_Heatmap_300_FigS3A.pdf'),
     width = 3,
     height = 17,
     limitsize = F,
@@ -460,7 +463,7 @@ ggsave(
 )
 ggsave(
     plot =Aph_Heatmap_300,
-    filename = paste0(output_dir,'/Aph_Heatmap_300_FigS4A.pdf'),
+    filename = paste0(output_dir,'/Aph_Heatmap_300_FigS3A.pdf'),
     width = 3,
     height = 17,
     limitsize = F,
@@ -469,7 +472,7 @@ ggsave(
 )
 ggsave(
     plot =ARO_Heatmap_300,
-    filename = paste0(output_dir,'/ARO_Heatmap_300_FigS4A.pdf'),
+    filename = paste0(output_dir,'/ARO_Heatmap_300_FigS3A.pdf'),
     width = 3,
     height = 17,
     limitsize = F,
@@ -478,16 +481,17 @@ ggsave(
 )
 ggsave(
     plot =HU_Heatmap_300,
-    filename = paste0(output_dir,'/HU_Heatmap_300_FigS4A.pdf'),
+    filename = paste0(output_dir,'/HU_Heatmap_300_FigS3A.pdf'),
     width = 3,
     height = 17,
     limitsize = F,
     units = 'cm',
     device = cairo_pdf
 )
+
 ggsave(
     plot =ATRIHU_Heatmap_300,
-    filename = paste0(output_dir,'/ATRIHU_Heatmap_300_FigS4A.pdf'),
+    filename = paste0(output_dir,'/ATRIHU_Heatmap_300_FigS3A.pdf'),
     width = 3,
     height = 17,
     limitsize = F,
@@ -496,7 +500,7 @@ ggsave(
 )
 ggsave(
     plot =Heat_maps_300,
-    filename = paste0(output_dir,'/FigS4A.pdf'),
+    filename = paste0(output_dir,'/FigS3A.pdf'),
     width = 17,
     height = 17,
     limitsize = F,

@@ -1,12 +1,12 @@
 #########################################################
 #########################################################
 
-# RUN Fig4A.R, Fig4B, Fig4C and FigS4A first
+# RUN Fig4A.R, Fig4B, Fig4C and FigS3A first
 
 
 #########################################################
 #########################################################
-output_dir = '~/Desktop/Figure_paper_to_update/FigS4/FigS4C-D'
+output_dir = '~/Desktop/Figure_paper_to_update/FigS3/FigS3B-D'
 system(paste0('mkdir -p ',output_dir))
 
 #add a color for SDR
@@ -16,7 +16,7 @@ Colors = c(Colors, 'SDR' = 'red')
 split_region300 = split(region_300, region_300$split_expression)
 
 exclude_common_elements = function(x, y) {
-    # converts a list into a string and removes the part that is in common between the two
+    # convert a list into a string and removes the part that is in common between the two
     # it is used to remove the bins that are shared between the gene body and the gene body+flanking regions
     y = as.numeric(str_split(
         string =  str_replace(
@@ -37,7 +37,7 @@ library(foreach)
 
 # for the granges overlap we require a minimum overlap of 25Kb
 min_ov = 25000
-#### Fig S4 C
+#### Fig S3 C
 
 #### Aph
 data = foreach(c = names(split_region300), .combine = 'rbind') %do% {
@@ -51,7 +51,7 @@ data = foreach(c = names(split_region300), .combine = 'rbind') %do% {
     hits1 = findOverlaps(subject = split_region300[[c]],
                          query = URI,
                          minoverlap = min_ov)
-    # find overlaps for the gene body+flankings
+    # find overlaps for the gene body+flanking
     hits2 = findOverlaps(subject = increased,
                          query = URI,
                          minoverlap = min_ov)
@@ -83,7 +83,7 @@ data = foreach(c = names(split_region300), .combine = 'rbind') %do% {
             Flanking = mean(unlist(Flanking), rm.na = T)
         ) %>%
         ungroup() %>%
-        #reshaoe df
+        #reshape df
         gather(Feature, Value, Gene, Flanking) %>%
         spread(Feature, Value)
     
@@ -98,7 +98,7 @@ pval = data %>% group_by(split_expression) %>% summarise(pval = wilcox.test(
 )$p.value) %>% ungroup()
 # adjust with false discovery rate
 pval$qval = p.adjust(pval$pval, method = 'fdr')
-# filter sifnificat pvalues
+# filter signification pvalues
 pval = pval[pval$qval < 0.05, ]
 
 p1 = data %>%
@@ -126,12 +126,19 @@ p1 = data %>%
     ) +
     labs(fill = '', x = 'Gene Group', y = 'mean URI in each gene body and relative flanking regions in Aph') +
     scale_fill_manual(values = c('Gene' = '#FCE621', 'Flanking' = '#CCCCCC')) +
-    general_theme
+    general_theme +
+    stat_summary(
+        fun.data = function(x) {
+            return(c(y = -2, label = length(x)))
+        } ,
+        geom = "text",
+        fun = median,aes(x = group, y = Value, group = Condition), position = position_dodge(width = 0.6)
+    )
 
 #save
 ggsave(
     plot = p1,
-    filename = paste0(output_dir, '/FigS4C.pdf'),
+    filename = paste0(output_dir, '/FigS3B.pdf'),
     width = 17,
     height = 14,
     limitsize = F,
@@ -140,7 +147,7 @@ ggsave(
 )
 
 
-#### Fig S4 C only flanking (for stat)
+#### Fig S3 B only flanking (for stat)
 
 # genes group
 list_gene_grops = unique(data$split_expression)
@@ -152,7 +159,7 @@ pval = foreach(a = 1:(length(list_gene_grops) - 1), .combine = 'rbind') %:%
                     # select the groups of interest
                     filter(split_expression == list_gene_grops[a] |
                                split_expression == list_gene_grops[b]) %>%
-                    # select colums of interest
+                    # select column of interest
                     dplyr::select(split_expression, Flanking) %>%
                     group_by(split_expression) %>%
                     #group into a list
@@ -173,7 +180,7 @@ pval = foreach(a = 1:(length(list_gene_grops) - 1), .combine = 'rbind') %:%
             }
 # adjust with FDR
 pval$qval = p.adjust(pval$pval, method = 'fdr')
-# select sifnificant qval
+# select significant qval
 pval = pval[pval$qval < 0.05, ]
 # adjust for plotting
 pval = pval %>%
@@ -189,7 +196,7 @@ pval = pval %>%
     mutate(y = seq(3, 5, length.out = n()))
 
 p2 = data %>%
-    #rename colum
+    #rename column
     dplyr::rename(group = split_expression) %>%
     # mutate groups into factor
     mutate(group = factor(group, levels = c('1st', '2nd', '3rd', '4th', 'SDR'))) %>%
@@ -211,12 +218,19 @@ p2 = data %>%
         yend = y
     )) +
     labs(fill = '', x = 'Gene Group', y = 'Average Aph URI in each flanking associated to a gene') +
-    scale_fill_manual(values = Colors) + general_theme
+    scale_fill_manual(values = Colors) + general_theme+
+    stat_summary(
+        fun.data = function(x) {
+            return(c(y = -2, label = length(x)))
+        } ,
+        geom = "text",
+        fun = median,aes(x = group, y = Flanking, group = group), position = position_dodge(width = 0.6)
+    )
 
 #save
 ggsave(
     plot = p2,
-    filename = paste0(output_dir, '/FigS4C_only flanking.pdf'),
+    filename = paste0(output_dir, '/FigS3B_only flanking.pdf'),
     width = 17,
     height = 14,
     limitsize = F,
@@ -225,11 +239,12 @@ ggsave(
 )
 
 
-#### Fig S4 D left
+#### Fig S3 C left
 hit = findOverlaps(query = URI,
                    subject = NT,
                    minoverlap = min_ov)
 
+URI$RT=NA
 ### check that there are no duplicates
 if (length(subjectHits(hit)) == length(unique(subjectHits(hit))) &
     length(queryHits(hit)) == length(unique(queryHits(hit)))) {
@@ -241,8 +256,8 @@ if (length(subjectHits(hit)) == length(unique(subjectHits(hit))) &
 
 
 filter_by_RT = function(X, RT, rt_limit = 0.5) {
-    # takes a list of bisn wit URI values and matching RT values
-    # filteres out bins based on an RT value limit
+    # it takes a list of bins wit URI values and matching RT values
+    # it filters out bins based on an RT value limit
     RT = unlist(RT)
     X = unlist(X)
     return(list(X[which(RT >= rt_limit)]))
@@ -250,7 +265,7 @@ filter_by_RT = function(X, RT, rt_limit = 0.5) {
 
 
 
-# calculates each group separatly
+# calculates each group separately
 data = foreach(c = names(split_region300), .combine = 'rbind') %do% {
     # find overlaps for the gene body
     hits = findOverlaps(subject = split_region300[[c]],
@@ -328,20 +343,27 @@ p3 = data %>%
     #labels
     labs(fill = '', x = 'Gene Group', y = 'mean URI in each gene body') +
     scale_fill_manual(values =  c('Aph' = '#95C11F',
-                                  'ARO' = '#F9B233')) + general_theme + coord_cartesian(ylim = c(-3, 3.3))
+                                  'ARO' = '#F9B233')) + general_theme + coord_cartesian(ylim = c(-3, 3.3))+
+    stat_summary(
+        fun.data = function(x) {
+            return(c(y = -3, label = length(x)))
+        } ,
+        geom = "text",
+        fun = median,aes(x = group, y = URI, group = Treatment), position = position_dodge(width = 0.6)
+    )
 #save
 ggsave(
     plot = p3,
-    filename = paste0(output_dir, '/FigS4D_left.pdf'),
+    filename = paste0(output_dir, '/FigS3C_left.pdf'),
     width = 17,
     height = 14,
     limitsize = F,
     units = 'cm',
     device = cairo_pdf
 )
-#### Fig S4 D right
+#### Fig S3 C right
 
-# calculates each group separatly
+# calculates each group separately
 data_later = foreach(c = names(split_region300), .combine = 'rbind') %do%
 {
     # find overlaps for the gene body
@@ -424,13 +446,102 @@ p4 = data_later %>%
     #labels
     labs(fill = '', x = 'Gene Group', y = 'mean URI in each gene body per beans with \nS50 >= 50 percentile of the S50') +
     scale_fill_manual(values =  c('Aph' = '#95C11F',
-                                  'ARO' = '#F9B233')) + general_theme
+                                  'ARO' = '#F9B233')) + general_theme+
+    stat_summary(
+        fun.data = function(x) {
+            return(c(y = -3, label = length(x)))
+        } ,
+        geom = "text",
+        fun = median,aes(x = group, y = URI, group = Treatment), position = position_dodge(width = 0.6)
+    )
 ggsave(
     plot = p4,
-    filename = paste0(output_dir, '/FigS4D_right.pdf'),
+    filename = paste0(output_dir, '/FigS3C_right.pdf'),
     width = 17,
     height = 14,
     limitsize = F,
     units = 'cm',
     device = cairo_pdf
 )
+
+#figure S3 D
+
+URI=read_tsv('URi_simulation_periodic_1kbXY.tsv')%>%
+    filter(Condition %in% c('Aph','AphRO'))
+    
+S50=read_tsv('S50_simulation_periodic_1kbXY.tsv')%>%
+    filter(Condition=='NT')%>%
+    select(-Condition)
+
+URI=URI%>%inner_join(S50)%>%
+    mutate(s50 = case_when(
+                            0.1 <= s50 & s50 < 0.33 ~ 'Early',
+                               0.33 <= s50 & s50 < 0.66 ~ 'Mid',
+                               0.66 <= s50 & s50 <= 0.9 ~ 'Late'),
+    s50=factor(s50,levels = c('Early','Mid', 'Late')))
+
+
+
+pval = URI %>%
+    spread(Condition,URI)%>%
+    drop_na()%>%
+    #reshape data
+    group_by(s50) %>%
+    #run wilcoxon test per group
+    summarise(pval = wilcox.test(
+        x = Aph ,
+        y = AphRO ,
+        paired = T
+    )$p.value,
+    pval_less = wilcox.test(
+        x = Aph ,
+        y = AphRO ,
+        paired = T,
+        alternative = 'less'
+    )$p.value) %>% ungroup()
+
+pval$qval=p.adjust(pval$pval,method = 'fdr')
+pval$qval_less=p.adjust(pval$pval_less,method = 'fdr')
+
+pval=pval%>%
+    mutate(qval=ifelse(qval>=0.05,'NS',format(qval, digits = 2, scientific = T)))
+
+p5 = URI %>%
+    drop_na()%>%
+    dplyr::select('group'=s50,URI,Condition)%>%
+    mutate(Condition=ifelse(Condition=='AphRO','ARO',Condition))%>%
+    ggplot() +
+    # plot boxplot
+    geom_boxplot(aes(x = group, y = URI, fill = Condition), position = position_dodge(width = 0.6),width=0.4) +
+    #add adjusted pvalue
+    geom_text(data = pval,
+              aes(
+                  x = s50,
+                  y = 10,
+                  label = qval
+              ),
+              vjust = -0.25) +
+   
+    # put a segment over all the groups
+    annotate(
+        'segment',
+        x = (1:3) - 0.25,
+        xend = (1:3) + 0.25,
+        y = 10,
+        yend = 10
+    ) +
+    #labels
+    labs(fill = '', x = 'Replication Timing', y = 'URI') +
+    scale_fill_manual(values =  c('Aph' = '#95C11F',
+                                  'ARO' = '#F9B233')) + general_theme+
+    stat_summary(
+        fun.data = function(x) {
+            return(c(y = -4, label = length(x)))
+        } ,
+        geom = "text",
+        fun = median,aes(x = group, y = URI, group = Condition), position = position_dodge(width = 0.6)
+    )
+
+
+ggsave(p5,filename = '~/Desktop/Figure_paper_to_update/FigS3/FigS3B-D/FigS3D.pdf',device = cairo_pdf,width = 10,height = 5)
+

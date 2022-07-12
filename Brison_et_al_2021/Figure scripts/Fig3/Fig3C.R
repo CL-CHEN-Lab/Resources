@@ -1,351 +1,277 @@
+#########################################################
+#########################################################
+
+# RUN Fig3A.R and Fig3B first
+
+
+#########################################################
+#########################################################
+
 output_dir='~/Desktop/Figure_paper_to_update/Fig3/Fig3C'
-system(paste0('mkdir ',output_dir))
+system(paste0('mkdir -p ',output_dir))
 
-library(extrafont)
-loadfonts(device = "postscript")
-
-library(tidyverse)
-library(gridGraphics)
-library(cowplot)
-
-#load data
-all_phase = read_tsv('All_normalised_Tracks_50adj_normalised_with_sim_periodic_1kbXY_ATRiadd.tsv')%>%
-    filter(
-        Condition %in% c("NT2","NT3","NT4","Aph1","Aph4","AphRO1","AphRO2","HU1","ATRiHU1")
-    )
-URI_Fs = read_tsv('URi_simulation_periodic_1kbXY_ATRIadd.tsv')%>%
-    filter(
-        Condition %in% c("NT","Aph","AphRO","HU","ATRiHU")
-    )
-
-# general pic settings
-tex_size = 7
-label_text_size=11
-font = 'Arial'
-fontface = "plain"
-line_size = 0.25
-general_theme = theme_classic() + theme(
-    plot.background = element_blank(),
-    strip.text = element_text(
-        size = tex_size,
-        family = font,
-        face = fontface,
-        color = 'black'
-    ),
-    legend.position = 'top',
-    panel.background = element_blank(),
-    text = element_text(
-        family = font,
-        size = tex_size,
-        face = fontface,
-        color = 'black',
-        margin = margin(b=0)
-    ),
-    strip.text.y = element_text(angle = 90),
-    legend.text = element_text(
-        family = font,
-        size = tex_size,
-        face = fontface,
-        color = 'black'
-    ),
-    axis.text = element_text(
-        family = font,
-        size = tex_size,
-        face = fontface,
-        color = 'black'
-    ),
-    axis.title = element_text(
-        family = font,
-        size = tex_size,
-        face = fontface,
-        color = 'black'
-    ),line = element_line(size = line_size),
-    axis.line = element_line(size = line_size),
-    strip.background = element_blank(),
-    panel.border = element_blank(),
-    panel.spacing=unit(1,'mm'),
-    legend.key.size = unit(8,'pt'),
-    plot.margin=unit(c(0,0,0,0),"cm"),
-    legend.margin=margin(0,0,0,0),
-    legend.box.margin=margin(0,0,0,0), 
-    legend.spacing = unit(0, 'cm'),
-    legend.background = element_blank(),
-    legend.title = element_text(vjust = 1.25)
-)
-
-
-FHIT = tibble(
-        chr = 'chr3',
-        start = 59735035,
-        end = 61237087,
-        gene='FHIT'
-    )
-WWOX = tibble(chr = 'chr16',
-                start = 78133310,
-                end = 79246567,
-                gene='WWOX')
-
-
-plot_fragile_site = function(Tracks,
-                             URI,
-                             position = tibble(chr = 'chr1', start = 0, end = 10000000),
-                             font = 30,
-                             tex_size = 'Courier',
-                             fontface = 'bold',
-                             line_size = 1.5,
-                             style = general_theme,
-                             legend_posistion = 'top',
-                             flanking = 2 * 10 ^ 6,
-                             pos_heatmap = 0.5,
-                             heatmap_limits=c(-3,3), 
-                             n_fill_breaks=3,
-                             more_or_less_label=c('N','L','M','B')) {
+average_profile = function(matrix,
+                           name = 'signal',
+                           group = 'genes',
+                           breaks = 'auto',
+                           labels = c('-100', 'TSS', 'TTS', '100'),
+                           limits = NA,
+                           tex_size = 30,
+                           font = 'Courier',
+                           fontface = 'bold',
+                           style = general_theme,
+                           line_size = 1.5,
+                           legend_position = 'top',
+                           Colors=NA) {
     
-    more_or_less_label=more_or_less_label[1]
-    n_fill_breaks=n_fill_breaks-1
+    #if the used does not provide info about the x axis breaks it looks  for the values into the matrix
+    if (breaks == 'auto') {
+        upstream = sum(grepl(x = colnames(matrix), pattern = 'u'))
+        body = sum(grepl(x = colnames(matrix), pattern = 't'))
+        dowstream = sum(grepl(x = colnames(matrix), pattern = 'd'))
+        
+        breaks = c(0, upstream + 1, upstream + body, upstream + body + dowstream) %>%
+            unique()
+    }
     
-    #invert start and end if needed
-    position = position %>%
-        mutate(s = ifelse(start > end, end, start),
-               e = ifelse(start > end, start, end)) %>%
-        dplyr::select(chr, 'start' = s, 'end' = 'e',gene)
-    
-    # select bins of interest over tracks ± flanking
-    tracks = Tracks %>% ungroup() %>%
-        filter(
-            chr == position$chr,
-            start >= position$start - flanking,
-            end <= position$end + flanking
-        ) %>%
-        # convert phases into factors
-        mutate(phase = factor(phase, levels = c(
-            'G1/S1', 'S2', 'S3', 'S4', 'S5', 'S6/G2/M'
-        ))) %>%
-        # average conditions
-        mutate(Condition = str_remove(Condition, '[1-9]{1,2}$')) %>%
-        group_by(Condition, chr, start, end, phase) %>%
-        summarise(reads = mean(reads))%>%
+    # convert matrix into a df
+    x = matrix %>% as_tibble() %>%
+        #assign group and a name to each line
+        mutate(group =group,
+               name = name) %>%
+        # reshape data
+        gather(pos, value, -group, -name) %>%
+        #calculate the mean value per position per group (the name is the same everywhere)
+        group_by(group, name, pos) %>%
+        summarise(value = mean(value, na.rm = T)) %>%
         ungroup() %>%
-        #Chnge names of ARO and ATRiHU
-        mutate(Condition = factor(
-            case_when(Condition == 'AphRO' ~ 'ARO',
-                      Condition == "ATRiHU" ~ 'HU+ATRi',
-                      T ~ Condition),
-            levels = c('NT', 'Aph', 'ARO', 'HU','HU+ATRi')
-        ),
-        #calculae center of the bin
-        cent = (start + end) / 2)
+        #convert position to factor and than number
+        mutate(pos = factor(pos, levels = colnames(matrix)),
+               pos = as.numeric(pos)) %>%
+        #arrange by group and position
+        arrange(group, pos)
+
+    #start plotting
+    x = ggplot(x) +
+        #line position vs value with colour depending on group
+        geom_line(aes(
+            x = pos,
+            y = value,
+            color = group
+        ), size = line_size) + 
+        #facet grid given name 
+        facet_grid( ~ name) +
+        #set x axis breaks 
+            scale_x_continuous(breaks = breaks, labels = labels) +
+        # general style 
+            style +
+            theme(
+                legend.position = legend_position,
+                legend.title = element_blank(),
+                axis.text.x = element_text(
+                    angle = 90,
+                    hjust = 0.5,
+                    vjust = 0.5,
+                    family = font,
+                    size = tex_size,
+                    face = fontface,
+                    color = 'black'
+                ),
+                panel.spacing=unit(0,'mm')
+            )+
+        #set labels to empty
+        xlab('') + ylab('') +
+        # add dashed lines 
+        geom_vline(xintercept = breaks[c(2, 3)],
+                   linetype = 'dashed',
+                   color = 'black', size =line_size)+
+        #add black rectangles around the plot
+        geom_rect(data = tibble(xmin=-Inf,xmax=Inf,ymin=-Inf,ymax=Inf),aes(xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax), fill=NA,color='black', size =line_size)+
+        theme( axis.line = element_blank())
+    if (!any(is.na(limits))) {
+        # if limits are give apply them
+        x = x + coord_cartesian(ylim = limits)
+    }
+    if (!any(is.na(Colors))) {
+        # if colors are given pass them to the plot
+        x = x + scale_color_manual(values = Colors)
+    }
     
-    # calculate max to set ylim
-    max = round(max(tracks %>% pull(reads)))
-    
-    #URI track 
-    URi_toplot = URI %>%
-        #select region of interest
-        filter(chr == position$chr,
-               start >= position$start -flanking,
-               end <= position$end + flanking) %>%
-        # create a NT track of NA and add it to the data
-        mutate(NT = NA) %>%
-        spread(Condition, URI) %>%
-        gather(Condition, URI, -chr, -start, -end) %>%
-        # add a name for the track
-        mutate(phase = 'URI',
-               rep = ' ') %>%
-        #calculate the center of the track 
-        mutate(cent = start + (end - start) / 2) %>%
-        #rename and convert into factors
-        mutate(Condition = factor(
-            case_when(Condition == 'AphRO' ~ 'ARO',
-                      Condition == "ATRiHU" ~ 'HU+ATRi',
-                      T ~ Condition),
-            levels = c('NT', 'Aph', 'ARO', 'HU','HU+ATRi')
-        ))
-    # max uri to set limits
-    URI_max=max(URi_toplot$URI,na.rm=T)
-    
-    #plot tracks 
-    p1 = tracks %>%
-        ggplot() + geom_area(aes(x = cent, y = reads, fill = Condition),position="identity") +
-        #lines to identify the gene body 
-        geom_vline(xintercept = position$end,
-                   color = 'purple', size =line_size) +
-        geom_vline(xintercept = position$start,
-                   color = 'purple', size =line_size) +
-        #split base on condition and phase
-        facet_grid(phase ~ Condition) +
-        # general style
-        style +
-        theme(
-            strip.background.x = element_blank(),
-            strip.text.x = element_blank(),
-            legend.position = 'none',
-            panel.background = element_blank(),
-            axis.line.y = element_blank(),
-            axis.text.x = element_text(
-                angle = 45,
-                hjust = 1,
-                vjust = 1,
-                family = font,
-                size = tex_size,
-                face = fontface,
-                color = 'black'
-            )
-        ) +
-        # add axis line 
-        geom_hline(yintercept = -Inf, size =line_size, color='black') +
-        # convert x axis lables 
-        scale_x_continuous(
-            labels =  function(x)
-                paste(round(x / 1000000, 2), 'Mb')
-        ) +
-        # assign colors
-        scale_fill_manual(values = c(
-            'Aph' = '#95C11F',
-            'ARO' = '#F9B233',
-            'HU' = '#CA9E67',
-            'NT' = '#36A9E1',
-            'HU+ATRi'='#7D4E24'
-        )) + 
-        #remouve xaxis label
-        xlab('')+
-        #assign limits
-        coord_cartesian(xlim = c(position$start - flanking, position$end + flanking))+
-        theme(axis.text.x = element_blank(),axis.ticks.x = element_blank())+
-        # add axis line 
-        geom_vline(xintercept = c(-Inf,Inf), size =line_size)
-    
-    #limits
-    segment=tibble(x=c(-Inf,Inf),y=c(-Inf,-Inf),xend=c(-Inf,Inf), yend=c(URI_max,URI_max),Condition=list(c('NT', 'Aph', 'ARO', 'HU','HU+ATRi')))%>%
-        unnest(cols = c(Condition))%>%
-        mutate(Condition=factor(Condition,            
-                                levels = c('NT', 'Aph', 'ARO', 'HU','HU+ATRi')
-        ))
-    
-    
-    # color breaks for the heatmap 
-    colo_breaks=seq(heatmap_limits[1], heatmap_limits[2], sum(abs(heatmap_limits)) /
-                        n_fill_breaks)
-    # labels for the colors of the heatmap ( if the signal is saturated over that value)
-    labels_colors=tibble(color_breks=colo_breaks,more_or_less_label=more_or_less_label)%>%
-        mutate(
-            labels_colors=case_when(
-                
-                more_or_less_label %in% c('B','L') & color_breks==min(color_breks) ~ paste0('≤',colo_breaks),
-                more_or_less_label %in% c('B','M') & color_breks==max(color_breks) ~ paste0('≥',colo_breaks),
-                T ~ as.character(colo_breaks)
-                
-            ))%>%pull(labels_colors)
-    
-    # URI plot 
-    p2 = URi_toplot %>%
-        ggplot() +
-        # draw box
-        geom_segment(data=segment,aes(x=x,xend=xend, y=y,yend=yend), size =line_size,color='black')+
-        # plot URI as line 
-        geom_line(aes(x = cent, y = URI), color = 'black', size =
-                      line_size) +
-        #plot URI as heatmap
-        ggplot2::geom_rect(aes(
-            xmin = start,
-            xmax = end,
-            ymin = unique(segment$yend)+pos_heatmap,
-            ymax = unique(segment$yend)+pos_heatmap+1,
-            fill = URI
-        )) +
-        # color gradient
-        scale_fill_gradient2(
-            low = 'red',
-            high = 'blue',
-            mid = 'white',
-            na.value = "grey", oob=squish,limits=heatmap_limits,breaks=colo_breaks,labels=labels_colors
-        )+
-        # y= -2 line 
-        geom_hline(yintercept = -2, color = 'red', size =line_size) +
-        # split conditiona and phase
-        facet_grid(phase ~ Condition) +
-        # add y label 
-        ylab('URI') +
-        # plot style
-        style +
-        theme(
-            legend.position = 'none',
-            axis.line.y = element_blank(),
-            axis.title.x = element_blank(),
-            axis.ticks.x  = element_blank(),
-            axis.text.x = element_blank(),
-            axis.title = element_text(color = 'white')
-        ) +
-        # add lines for the axes
-        geom_hline(yintercept = -Inf, size =line_size,col='black') +
-        #add lines for the gene body
-        geom_vline(xintercept = position$end,
-                   color = 'purple', size =
-                       line_size) +
-        geom_vline(xintercept = position$start,
-                   color = 'purple', size =
-                       line_size) +
-        #add line for the x axis
-        geom_hline(yintercept = -Inf, size =line_size) + 
-        scale_y_continuous(breaks = c(-2, 0, 2)) +
-        #add limits
-        coord_cartesian(xlim = c(position$start - flanking, position$end + flanking))
-    
-    
-    # return plot and legend
-    return(list(Plot=plot_grid(
-        p2,
-        p1,
-        rel_heights = c( 4, 15),
-        ncol = 1,
-        align = 'v',
-        axis = "l"
-    ),legend=get_legend(p2+theme(legend.position = 'top'))))
+    return(x)
 }
 
-FRA3B = plot_fragile_site(
-    Tracks = all_phase,
-    URI = URI_Fs,
-    position = FHIT,
-    tex_size = tex_size,
-    font = font,
-    fontface = fontface,
-    line_size = line_size,
-    style = general_theme,
-    legend_posistion = 'none',more_or_less_label = 'B'
+
+#select genes that are bigger than 300 that are not SDR
+region_300 = genes[genes$split_size == "≥300kb" & genes$split!='SDR']
+
+# calculate matrices 
+rt_300 = normalizeToMatrix(
+    target = region_300,
+    signal =  NT,
+    value_column = 's50',
+    mean_mode = "w0",
+    extend = 100000,
+    target_ratio = 0.45
 )
-FRA16D = plot_fragile_site(
-    Tracks = all_phase,
-    URI = URI_Fs,
-    position = WWOX,
-    tex_size = tex_size,
-    font = font,
-    fontface = fontface,
-    line_size = line_size,
-    style = general_theme,
-    legend_posistion = 'none',more_or_less_label = 'B'
+exp_300 = normalizeToMatrix(
+    target = region_300,
+    signal =  bins,
+    value_column = 'counts',
+    mean_mode = "w0",
+    extend = 100000,
+    target_ratio = 0.45
+)
+mat_Aph_300 = normalizeToMatrix(
+    target = region_300,
+    signal =  URI,
+    value_column = 'Aph',
+    extend = 100000,
+    mean_mode = "w0",
+    target_ratio = 0.45
+)
+mat_AphRO_300 = normalizeToMatrix(
+    target = region_300,
+    signal =  URI,
+    value_column = 'AphRO',
+    extend = 100000,
+    mean_mode = "w0",
+    target_ratio = 0.45
+)
+mat_HU_300 = normalizeToMatrix(
+    target = region_300,
+    signal =  URI,
+    value_column = 'HU',
+    extend = 100000,
+    mean_mode = "w0",
+    target_ratio = 0.45
+)
+mat_ATRiHU_300 = normalizeToMatrix(
+    target = region_300,
+    signal =  URI,
+    value_column = 'ATRiHU',
+    extend = 100000,
+    mean_mode = "w0",
+    target_ratio = 0.45
 )
 
-#final assembly
-Fragiale_sites = plot_grid(
-    FRA3B$legend,
+#colors
+Colors=c(
+    '1st'='#0000FF',
+    '2nd'='#3AAA35',
+    '3rd'='#FF00FF',
+    '4th'='#951B81'
+)
+Heat_maps_300 = plot_grid(
     
-    textGrob('FRA3B (FHIT)',gp = gpar(
-        fontsize = tex_size,
-        fontface = fontface,
-        fontfamily = font
-    )),
-    FRA3B$Plot,
-    textGrob('FRA16D (WWOX)',gp = gpar(
-        fontsize = tex_size,
-        fontface = fontface,
-        fontfamily = font
-    )),
-    FRA16D$Plot,
+    plot_grid(
+      
+            average_profile(
+                exp_300,
+                name = 'Gro-seq',
+                group = region_300$split_expression,
+                legend_position = 'none',
+                tex_size = tex_size,
+                font = font,
+                fontface = fontface,
+                line_size = line_size,
+                Colors = Colors
+            )+scale_y_continuous(breaks=c(0,1000,2000),labels = c(0,'1K','2K'))+
+                theme(strip.text  = element_blank()),
+        
+      
+            average_profile(
+                rt_300,
+                name = 'RT (NT)',
+                group = region_300$split_expression,
+                limits = c(1, 0),
+                legend_position = 'none',
+                tex_size = tex_size,
+                font = font,
+                fontface = fontface,
+                line_size = line_size,
+                Colors = Colors
+            ) + scale_y_continuous(breaks=c(0,0.5,1))+
+                theme(strip.text  = element_blank()),
+      
+            average_profile(
+                mat_Aph_300,
+                name = 'URI (Aph)',
+                group = region_300$split_expression,
+                limits = c(-3, 3),
+                legend_position = 'none',
+                tex_size = tex_size,
+                font = font,
+                fontface = fontface,
+                line_size = line_size,
+                Colors = Colors
+            )+
+                theme(strip.text  = element_blank()),
+  
+            average_profile(
+                mat_AphRO_300,
+                name = 'URI (ARO)',
+                group = region_300$split_expression,
+                limits = c(-3, 3),
+                legend_position = 'none',
+                tex_size = tex_size,
+                font = font,
+                fontface = fontface,
+                line_size = line_size,
+                Colors = Colors
+            )+
+                theme(strip.text  = element_blank()),
+
+            average_profile(
+                mat_HU_300,
+                name = 'URI (HU)',
+                group = region_300$split_expression,
+                limits = c(-3, 3),
+                legend_position = 'none',
+                tex_size = tex_size,
+                font = font,
+                fontface = fontface,
+                line_size = line_size,
+                Colors = Colors
+            )+
+                theme(strip.text  = element_blank()),
+   
+            average_profile(
+                mat_ATRiHU_300,
+                name = 'URI (HU+ATRi)',
+                group = region_300$split_expression,
+                limits = c(-3, 3),
+                legend_position = 'none',
+                tex_size = tex_size,
+                font = font,
+                fontface = fontface,
+                line_size = line_size,
+                Colors = Colors
+            )+
+                theme(strip.text  = element_blank()),
+        nrow = 1,
+        rel_widths = c(1.03, 1.05, 1, 1, 1, 1, 1, 0.3)
+    ),
+    get_legend(
+        average_profile(
+            exp_300,
+            name = 'Gro-seq',
+            group = region_300$split_expression,
+            tex_size = tex_size,
+            font = font,
+            fontface = fontface,
+            Colors = Colors
+        )
+    ),
     ncol = 1,
-    scale = 1,
-    rel_heights =  c(0.1 ,0.03, 1,0.03,1)
+    rel_heights = c( 2,0.1),scale = 0.9
 )
-
-
-ggsave(plot =Fragiale_sites ,filename = paste0(output_dir,'/Fig3C.pdf'),device = cairo_pdf,width = 17 ,height = 20,units = 'cm')
+#save
+ggsave(
+    plot =Heat_maps_300,
+    filename = paste0(output_dir,'/Fig3C.pdf'),
+    width = 17,
+    height = 3.5,
+    limitsize = F,
+    units = 'cm',
+    device = cairo_pdf
+)

@@ -1,4 +1,4 @@
-output_dir='~/Desktop/Figure_paper_to_update/Fig4/Fig4A'
+output_dir='~/Desktop/Figure_paper_to_update/Fig3/Fig3A'
 system(paste0('mkdir -p ',output_dir))
 
 library(extrafont)
@@ -63,15 +63,9 @@ general_theme = theme_classic() + theme(
     legend.title = element_text(vjust = 1.25)
 )
 #load URI
-URI = read_tsv('URi_simulation_periodic_1kbXY_ATRIadd.tsv')%>%
-    filter(
-        Condition %in% c("NT","Aph","AphRO","HU","ATRiHU")
-    )
+URI = read_tsv('URi_simulation_periodic_1kbXY.tsv')
 #load S50
-S50 = read_tsv('S50_simulation_periodic_1kbXY_ATRiadd.tsv')%>%
-    filter(
-        Condition %in% c("NT","Aph","AphRO","HU","ATRiHU")
-    )
+S50 = read_tsv('S50_simulation_periodic_1kbXY.tsv')
 # load genes
 genes = read_tsv('./Gro-Seq/refseq_genes_h19') %>%
     # keep 1:22 and X
@@ -85,7 +79,7 @@ genes = read_tsv('./Gro-Seq/refseq_genes_h19') %>%
         keep.extra.columns = T
     )
 
-# split isoforms into differen lists and reduce 
+# split isoforms into different lists and reduce 
 genes = split(genes, genes$name2) %>% GenomicRanges::reduce() %>% unlist()
 
 # keep genes bigger than 100kb
@@ -114,7 +108,7 @@ Gro = rbind(
         keep.extra.columns = T
     )
 
-# from S50 recove NT rt and convert to GRanges
+# from S50 recover NT rt and convert to GRanges
 NT = S50 %>%
     #exclude 0
     filter(Condition == 'NT',
@@ -129,7 +123,7 @@ NT = S50 %>%
 
 library(BSgenome.Hsapiens.UCSC.hg19)
 
-# breat a 10kb genome binning
+# make a 10kb genome binning
 bins = tileGenome(
     seqlengths = seqinfo(Hsapiens),
     tilewidth = 10000,
@@ -182,10 +176,10 @@ genes = genes[subjectHits(hits)] %>%
     summarise(RT = median(rep(RT, W))) %>%
     ungroup() 
 
-# calculate quintiles once excluced conts ==0
+# calculate quantiles once excluded counts ==0
 q = quantile(genes$counts[genes$counts != 0], c(.33, .66))
 
-#assign genes to differen expression groups and size 
+#assign genes to different expression groups and size 
 genes = genes %>% dplyr::mutate(
     f = 0,
     s = q[[1]],
@@ -211,13 +205,13 @@ genes = genes %>% dplyr::mutate(
 
 #load SDR and t-SDR and merge the annotation
 DR = read_delim(
-    '/Volumes/Storage2/CFS_reference/SDR.bed',
+    '/Volumes/Storage/CFS_reference/SDR.bed',
     col_names = c('chr', 'start', 'end'),
     delim = '\t'
 ) %>%
     left_join(
         read_delim(
-            '/Volumes/Storage2/CFS_reference/t-SDR.bed',
+            '/Volumes/Storage/CFS_reference/t-SDR.bed',
             col_names = c('chr', 'start', 'end'),
             delim = '\t'
         ) %>%
@@ -234,23 +228,22 @@ overlaps <-
 overlaps_1 = width(overlaps) / width(DR[subjectHits(hits)]) >= 0.25
 overlaps_2 = width(overlaps) / width(genes[queryHits(hits)]) >= 0.25
 
-#initialise a column
+#initialize a column
 genes$split='NonSDR'
-# select gens in which either feature overlaps for at least 25% and chagen NonSDR in SDR
+# select gens in which either feature overlaps for at least 25% and change NonSDR in SDR
 genes[queryHits(hits)[overlaps_1|overlaps_2]]$split = 'SDR'
 
-#Load and convert URI into grange and associate infos
-URI = read_tsv('URi_simulation_periodic_1kbXY_ATRIadd.tsv')%>%
-    filter(
-        Condition %in% c("NT","Aph","AphRO","HU","ATRiHU")
-    ) %>% inner_join(S50 %>% filter(Condition == 'NT') %>% dplyr::select(-Condition)) %>%
+#Load and convert URI into grange and associate info
+URI = read_tsv('URi_simulation_periodic_1kbXY.tsv') %>% 
+    inner_join(S50 %>% filter(Condition == 'NT') %>% 
+                   dplyr::select(-Condition)) %>%
     mutate(s50 = ifelse(s50 < 0.5, 'Early', 'Late'))%>%
     spread(Condition, URI) %>% makeGRangesFromDataFrame(keep.extra.columns = T)
 
 # select Genes that are bigger than 300kb and overlap with SDR
 region_small = genes[genes$split == 'SDR' & genes$split_size =="≥300kb"]
 
-# calculate matrixes for plotting of each URI signal as well as Gro-seq and RT (NT)
+# calculate matrices for plotting of each URI signal as well as Gro-seq and RT (NT)
 rt_sdr = normalizeToMatrix(
     target = region_small,
     signal =  NT,
@@ -291,6 +284,7 @@ mat_HU_sdr = normalizeToMatrix(
     mean_mode = "w0",
     target_ratio = 0.45
 )
+
 
 mat_ATRiHU_sdr = normalizeToMatrix(
     target = region_small,
@@ -337,17 +331,17 @@ heatmap_small = function(matrix,
             unique()
     }
     
-    # convert matrix ito a tibble 
+    # convert matrix into a tibble 
     matrix = matrix %>% as_tibble() %>%
         mutate(line = 1:n())
     
-    # if the names of genes in each line are provided it adds a colum
+    # if the names of genes in each line are provided it adds a column
     if (!any(is.na(gene_list))) {
         matrix = matrix  %>%
             mutate(genes = gene_list)
     }
     
-    # if a specifc order is request, it convers line into a factor 
+    # if a specific order is request, it converts line into a factor 
     # and then it assigns a new line index
     if (!any(is.na(line_order))) {
         matrix = matrix  %>%
@@ -397,7 +391,7 @@ heatmap_small = function(matrix,
             geom_tile(aes(
                 y = genes,
                 x = position,
-                # if the fill exide min or max values level them to the manual imposed ones
+                # if the fill exceed min or max values level them to the manual imposed ones
                 fill = ifelse(
                     value < min(limits),
                     min(limits),
@@ -426,7 +420,7 @@ heatmap_small = function(matrix,
                 legend.key.width = unit(0.2, "cm"),
                 legend.key.height = unit(0.1, "cm")
             ) +
-            # drow box
+            # draw box
             geom_rect(
                 data = max_min,
                 aes(
@@ -594,7 +588,7 @@ heatmap_small = function(matrix,
             limits = limits,
             name = name,
             breaks = colo_breaks,
-            labels=labels_colors, oob=squish
+            labels=labels_colors
         )
         
     }
@@ -694,13 +688,13 @@ Heat_maps_small = plot_grid(
             n_fill_breaks = 3,
             line_size = line_size,
             legend.position = 'top'
-        ) ,
-        heatmap_small(
+        ),
+            heatmap_small(
             matrix = mat_ATRiHU_sdr,
             limits = c(-3, 3),
             more_or_less_label = 'B',
             line_order = line_order_small,
-            name = 'URI (ATRiHU)',
+            name = 'URI (HU+ATRi)',
             high_color = 'blue',
             low_color = 'red',
             mid_color = 'white',
@@ -714,14 +708,14 @@ Heat_maps_small = plot_grid(
             legend.position = 'top'
         ) ,
     nrow = 1,
-    rel_widths = c(1.28, 1.06, 1, 1, 1,1)
+    rel_widths = c(1.68, 1, 1, 1, 1,1)
 )
 
 
 ggsave(
     plot =Heat_maps_small,
-    filename = paste0(output_dir,'/Fig4A.pdf'),
-    width = 17,
+    filename = paste0(output_dir,'/Fig3A.pdf'),
+    width = 19,
     height = 11,
     limitsize = F,
     units = 'cm',
